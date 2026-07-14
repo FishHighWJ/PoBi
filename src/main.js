@@ -603,8 +603,9 @@ app.on('will-quit', () => {
 });
 
 app.on('window-all-closed', () => {
-  // macOS 风格：不主动 quit，但 Windows 下可退出
-  // app.quit();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });
 
 

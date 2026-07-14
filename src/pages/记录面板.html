@@ -1893,11 +1893,11 @@
         card.dataset.recordId = rec.id;
         const aiContent = rec.aiAnalysis ? `
           <div class="record-divider"></div>
-          <div class="record-ai-content">${rec.aiAnalysis}</div>
+          <div class="record-ai-content">${escapeHtml(rec.aiAnalysis)}</div>
         ` : '';
         card.innerHTML = `
-          <div class="record-category">${rec.category}<span class="color-ring"></span></div>
-          <div class="record-content">${rec.content}</div>
+          <div class="record-category">${escapeHtml(rec.category)}<span class="color-ring"></span></div>
+          <div class="record-content">${escapeHtml(rec.content)}</div>
           ${aiContent}
           <div class="record-footer">
             <span class="record-time">${(window.PoBiUtils && PoBiUtils.formatTime) ? PoBiUtils.formatTime(rec.createdAt || rec.time) : (rec.time || '')}</span>
@@ -2346,7 +2346,7 @@
         window._dailyFullTexts.push(r.content);
         var time = PoBiUtils ? PoBiUtils.formatTime(r.createdAt) : '';
         return '<div class="record-item" data-index="' + i + '">' +
-          '<div class="record-item-content">' + r.content + '</div>' +
+          '<div class="record-item-content">' + escapeHtml(r.content) + '</div>' +
           '<div class="record-item-meta"><span>' + time + '</span></div>' +
         '</div>';
       }).join('');
@@ -2387,7 +2387,7 @@
         window._weeklyFullTexts.push(r.content);
         var time = PoBiUtils ? PoBiUtils.formatTime(r.createdAt) : '';
         return '<div class="record-item" data-index="' + i + '">' +
-          '<div class="record-item-content">' + r.content + '</div>' +
+          '<div class="record-item-content">' + escapeHtml(r.content) + '</div>' +
           '<div class="record-item-meta"><span>' + time + '</span></div>' +
         '</div>';
       }).join('');
@@ -2743,7 +2743,7 @@
       cats.forEach(function(c) {
         html += '<div class="category-item"><span class="category-label' + (currentCat === c ? ' active' : '') + '" data-cat="' + c + '">' + c + '</span></div>';
       });
-      scroll.innerHTML = html;
+      scroll.textContent = ''; scroll.appendChild(document.createRange().createContextualFragment(html));
       bindCategoryClicks();
     }
 

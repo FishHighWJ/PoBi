@@ -313,7 +313,7 @@ async function generateDailyReport(todayRecords) {
 
   var elapsed = Date.now() - startTime;
   setTimeout(function() {
-    container.innerHTML = resultHtml;
+    container.innerHTML = escapeHtml(resultHtml).replace(/\n/g, '<br>');
   }, Math.max(0, minLoadMs - elapsed));
 }
 
@@ -346,7 +346,7 @@ function loadTodayRecords() {
     var time = PoBiUtils ? PoBiUtils.formatTime(r.createdAt) : '';
     var cat = (r.category && r.category !== '全部') ? r.category : '';
     return '<div class="record-item" data-idx="' + i + '">' +
-      '<div class="record-item-content">' + r.content + '</div>' +
+      '<div class="record-item-content">' + escapeHtml(r.content) + '</div>' +
       '<div class="record-item-meta">' +
         '<span>' + time + '</span>' +
         (cat ? '<span class="record-item-category">' + cat + '</span>' : '') +

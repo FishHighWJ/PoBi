@@ -33,6 +33,14 @@ window.safeJSON = function(raw, fallback) {
   catch (_) { return fallback; }
 };
 
+// XSS 防护：HTML 转义
+window.escapeHtml = function(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
+};
+
 // ── 格式化时间戳 ──────────────────────────────────────────────
 window.PoBiUtils = {
   formatTime(isoStr) {

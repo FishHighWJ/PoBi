@@ -1,1 +1,17 @@
-*.zip filter=lfs diff=lfs merge=lfs -text
+* text=auto
+
+*.html text eol=lf
+*.css text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+
+*.zip binary
+*.exe binary
+*.app binary

@@ -1,32 +1,49 @@
-﻿# Dependencies
+# ── 依赖 ─────────────────────────────
 node_modules/
+src/node_modules/
 
-# Build output
-dist/
-build/
-out/
+# ── Electron 打包产物 ────────────────
+src/dist/
+src/out/
+*.exe
+*.app
+*.dmg
+*.AppImage
+*.deb
+*.snap
+*.blockmap
 
-# Electron builder
-release-builds/
+# ── 发布包：改用 GitHub Releases 托管，不入库 ──
+releases/*.zip
+releases/*.7z
+releases/*.tar.gz
 
-# OS files
-.DS_Store
-Thumbs.db
-desktop.ini
+# ── 日志与临时文件 ───────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-# IDE
+# ── 编辑器 / 系统 ────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Env
+# ── 本地配置 / 密钥（防泄露）─────────
 .env
 .env.local
+*.local
+secrets.json
+config.local.json
 
-# Logs
-*.log
-npm-debug.log*
-
-# User data (runtime)
+# ── 用户数据（开发期产生的本地数据）─
 userData/
+voice_records/
+
+# ── 截图占位 ─────────────────────────
+# docs/screenshots/ 应入库，但空目录需保留

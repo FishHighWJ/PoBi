@@ -239,7 +239,7 @@ function createFloatingWindow() {
 
   floatingWindow.loadURL('app://pages/悬浮窗.html');
   floatingWindow.setVisibleOnAllWorkspaces(true);
-  floatingWindow.setAlwaysOnTop(true, 'screen-saver');
+  floatingWindow.setAlwaysOnTop(true, 'normal');
 
   // 监听窗口移动 → 记忆位置
   let moveTimer = null;

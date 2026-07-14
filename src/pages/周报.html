@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>本周周报 - 破壁视界</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #F0F2F5;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; position: relative;
+    }
+
+    #spark-canvas { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999; }
+
+    .page-container {
+      width: 380px; min-width: 300px; min-height: 360px;
+      background: rgba(255,255,255,0.88);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+      display: flex; flex-direction: column;
+      overflow: auto; resize: both; position: relative;
+    }
+
+    .top-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px;
+      -webkit-app-region: drag; user-select: none;
+      border-bottom: 1px solid rgba(0,0,0,0.04); flex-shrink: 0;
+    }
+    .nav-back { font-size: 14px; color: rgba(0,0,0,0.5); cursor: pointer; -webkit-app-region: no-drag; }
+    .nav-title { font-size: 16px; font-weight: 600; color: #1A1D27; }
+    .nav-close {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+      color: rgba(0,0,0,0.5); transition: all 0.15s ease;
+      flex-shrink: 0; margin-left: auto; -webkit-app-region: no-drag;
+    }
+    .nav-close:hover { color: #1A1D27; background: rgba(0,0,0,0.04); }
+
+    .content-area {
+      flex: 1; padding: 16px 20px;
+      display: flex; flex-direction: column; gap: 10px;
+      overflow-y: auto; scrollbar-width: none;
+    }
+    .content-area::-webkit-scrollbar { width: 0; height: 0; }
+
+    /* 报告卡片 */
+    .report-card {
+      background: rgba(0,0,0,0.015);
+      border: 1px solid rgba(0,0,0,0.04);
+      border-radius: 8px; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+
+    .report-line {
+      font-size: 14px; color: #1A1D27; line-height: 1.6;
+    }
+    .report-line.highlight {
+      font-weight: 600; font-size: 15px;
+    }
+    .report-line.secondary {
+      color: rgba(0,0,0,0.5); font-size: 13px;
+    }
+    .report-line.finding {
+      color: rgba(0,0,0,0.55); font-size: 13px;
+      border-top: 1px dashed rgba(0,0,0,0.06);
+      padding-top: 8px;
+    }
+    .report-line.feedback {
+      color: rgba(0,0,0,0.55); font-size: 13px;
+      border-top: 1px solid rgba(0,0,0,0.04);
+      padding-top: 8px; margin-top: 2px;
+    }
+
+    .generating-text {
+      color: rgba(0,0,0,0.35); font-style: italic; font-size: 13px;
+      padding: 20px; text-align: center;
+    }
+
+    /* 记录列表 */
+    .records-section { margin-top: 2px; }
+    .records-label {
+      font-size: 12px; color: rgba(0,0,0,0.4);
+      margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .record-item {
+      background: rgba(255,255,255,0.5);
+      border: 1px solid rgba(0,0,0,0.04); border-radius: 8px;
+      padding: 12px; cursor: pointer;
+      transition: all 0.2s ease; margin-bottom: 6px;
+    }
+    .record-item:hover {
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transform: translateX(3px);
+    }
+    .record-item-content {
+      font-size: 13px; color: #1A1D27; line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; margin-bottom: 6px;
+    }
+    .record-item-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: rgba(0,0,0,0.35);
+    }
+    .record-item-category {
+      font-size: 10px; color: rgba(0,0,0,0.4);
+      background: rgba(0,0,0,0.03); padding: 2px 8px; border-radius: 4px;
+    }
+
+    /* 详情面板 */
+    .detail-panel {
+      width: 320px; min-width: 260px; min-height: 300px;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid rgba(0,0,0,0.06); border-radius: 12px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+      display: flex; flex-direction: column;
+      position: fixed; top: 50%; left: calc(50% + 200px);
+      transform: translateY(-50%) translateX(100%);
+      opacity: 0; visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+      z-index: 1000; overflow: auto; resize: both;
+    }
+    .detail-panel.active {
+      transform: translateY(-50%) translateX(0);
+      opacity: 1; visibility: visible;
+    }
+    .detail-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid rgba(0,0,0,0.04); flex-shrink: 0;
+    }
+    .detail-close {
+      font-size: 18px; color: rgba(0,0,0,0.5); cursor: pointer;
+      width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; transition: color 0.2s;
+    }
+    .detail-close:hover { color: rgba(0,0,0,0.8); background: rgba(0,0,0,0.04); }
+    .detail-time { font-size: 12px; color: rgba(0,0,0,0.5); }
+    .detail-body { flex: 1; padding: 20px; overflow-y: auto; }
+    .detail-content { font-size: 14px; color: #1A1D27; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <canvas id="spark-canvas"></canvas>
+
+  <div class="page-container">
+    <div class="top-nav">
+      <span class="nav-back">← 返回</span>
+      <span class="nav-title">本周周报</span>
+      <span class="nav-close" id="panelClose">✕</span>
+    </div>
+
+    <div class="content-area">
+      <div id="weeklyReportContainer" class="report-card">
+        <div class="generating-text">正在分析本周记录…</div>
+      </div>
+
+      <div class="records-section">
+        <div class="records-label">本周记录 <span id="weekRecordCount">(0)</span></div>
+        <div id="weekRecordsContainer"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="detail-panel" id="detailPanel">
+    <div class="detail-header">
+      <span class="detail-close" id="detailClose">&#x2715;</span>
+      <span class="detail-time" id="detailTime">本周</span>
+    </div>
+    <div class="detail-body">
+      <div class="detail-content" id="detailContent">-</div>
+    </div>
+  </div>
+
+<script src="../utils/shared.js"></script>
+<script>ThemeManager.init();</script>
+<script>
+new ClickSpark({ sparkColor: '#666', sparkSize: 6, sparkRadius: 12, sparkCount: 8, duration: 400 });
+
+document.querySelector('.nav-back').addEventListener('click', function() {
+  window.electronAPI.openPanel('记录面板');
+});
+document.getElementById('panelClose').addEventListener('click', function() {
+  window.electronAPI.closePanel();
+});
+
+// ── 工具函数 ──
+function extractTopicFromContent(records, minRatio) {
+  minRatio = minRatio || 0.3;
+  var stopWords = ['今天','一个','这个','什么','怎么','为什么','是不是','我觉得','因为','所以','但是','可以','没有','不会','不过','如果','已经','还是','就是','不是','知道','觉得','应该','可能','一定','以后','以前','现在','时候','东西','这样','那样','一下','一点','一些','大家','别人','自己','他们','我们','而且','然后','虽然','然而','于是','所有','任何'];
+  var wordFreq = {};
+  records.forEach(function(r) {
+    var clean = (r.content || '').replace(/[，。！？、；：""''（）【】《》\s,.!?;:'"()\[\]{}，．？！～＠＃￥％…＆×（）—＋＝\/\\|@#$%^&*+=~\`\d]/g, '');
+    for (var len = 4; len >= 2; len--) {
+      for (var i = 0; i <= clean.length - len; i++) {
+        var w = clean.substring(i, i + len);
+        if (!stopWords.some(function(sw) { return w.indexOf(sw) >= 0; })) {
+          wordFreq[w] = (wordFreq[w] || 0) + 1;
+        }
+      }
+    }
+  });
+  var sorted = Object.entries(wordFreq).sort(function(a, b) {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return b[0].length - a[0].length;
+  });
+  if (sorted.length > 0 && sorted[0][1] >= records.length * minRatio) return sorted[0][0];
+  return null;
+}
+
+function getMainTopic(records) {
+  var cats = {};
+  records.forEach(function(r) {
+    var cat = (r.category && r.category !== '全部') ? r.category : null;
+    if (cat) cats[cat] = (cats[cat] || 0) + 1;
+  });
+  var topCat = Object.entries(cats).sort(function(a,b) { return b[1]-a[1]; })[0];
+  if (topCat && topCat[1] / records.length >= 0.4) return topCat[0];
+  var fromContent = extractTopicFromContent(records, 0.3);
+  if (fromContent) return fromContent;
+  return '日常';
+}
+
+function getLastWeekRecords() {
+  var allRecords = safeJSON(localStorage.getItem('pobi_records'), []);
+  var now = new Date();
+  var dayOfWeek = now.getDay();
+  var mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  var thisMonday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+  var lastMonday = new Date(thisMonday.getTime() - 7 * 86400000);
+  return allRecords.filter(function(r) {
+    return r.createdAt >= lastMonday.toISOString() && r.createdAt < thisMonday.toISOString();
+  });
+}
+
+// ── 周报生成 ──
+function generateWeekReportWithoutAI(allRecords) {
+  var count = allRecords.length;
+  if (count === 0) {
+    return '<div class="report-line">这周还没写下什么。不用补，从今天开始记一条就好。</div>';
+  }
+
+  // 1. 活跃天数
+  var days = new Set();
+  allRecords.forEach(function(r) {
+    var d = new Date(r.createdAt);
+    days.add(d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate());
+  });
+
+  var html = '';
+  html += '<div class="report-line highlight">本周' + count + '条，活跃' + days.size + '天</div>';
+
+  // 2. 与上周对比
+  var lastWeekRecords = getLastWeekRecords();
+  var lastWeekCount = lastWeekRecords.length;
+  if (lastWeekCount === 0) {
+    html += '<div class="report-line">首周记录</div>';
+  } else if (count > lastWeekCount) {
+    html += '<div class="report-line">比上周多' + (count - lastWeekCount) + '条</div>';
+  } else if (count < lastWeekCount) {
+    html += '<div class="report-line">比上周少' + (lastWeekCount - count) + '条</div>';
+  } else {
+    html += '<div class="report-line secondary">与上周持平</div>';
+  }
+
+  // 3. 本周关注点
+  var mainTopic = getMainTopic(allRecords);
+  if (mainTopic === '日常') {
+    html += '<div class="report-line secondary">涉及多个方向，没有明显焦点</div>';
+  } else {
+    var topicCount = 0;
+    allRecords.forEach(function(r) {
+      var cat = (r.category && r.category !== '全部') ? r.category : '';
+      if (cat === mainTopic) { topicCount++; return; }
+      if (r.content && r.content.indexOf(mainTopic) >= 0) topicCount++;
+    });
+    var pct = Math.round(Math.max(topicCount, 1) / count * 100);
+    html += '<div class="report-line">主要聊「' + mainTopic + '」，占' + pct + '%</div>';
+  }
+
+  // 4. 一条发现（可选）
+  if (lastWeekRecords.length > 0) {
+    var thisWeekMain = getMainTopic(allRecords);
+    var lastWeekMain = getMainTopic(lastWeekRecords);
+    if (thisWeekMain !== '日常' && lastWeekMain !== '日常' && thisWeekMain !== lastWeekMain) {
+      html += '<div class="report-line finding">话题从「' + lastWeekMain + '」转向「' + thisWeekMain + '」</div>';
+    } else if (thisWeekMain !== '日常' && lastWeekMain === '日常') {
+      html += '<div class="report-line finding">「' + thisWeekMain + '」本周首次成为焦点</div>';
+    } else if (thisWeekMain === '日常' && lastWeekMain !== '日常') {
+      html += '<div class="report-line finding">上周焦点已分散，本周话题更广</div>';
+    }
+  }
+
+  // 5. 反馈
+  var feedback = '';
+  if (count <= 3) {
+    feedback = '这周记了' + count + '条。翻一下，哪一条最值得留到下周？';
+  } else if (count <= 7) {
+    feedback = '这周有' + count + '条记录，分布较散。试试下周聚焦一个方向。';
+  } else {
+    feedback = '这周记录比较多，整理一下，有没有反复出现的词？';
+  }
+  html += '<div class="report-line feedback">' + feedback + '</div>';
+
+  return html;
+}
+
+function formatWeekReportContent(content) {
+  var lines = content.split('\n').filter(function(l) { return l.trim(); });
+  var html = '';
+  lines.forEach(function(line, i) {
+    line = line.trim();
+    if (!line) return;
+    if (i === 0) {
+      html += '<div class="report-line highlight">' + line + '</div>';
+    } else if (i === lines.length - 1) {
+      html += '<div class="report-line feedback">' + line + '</div>';
+    } else {
+      html += '<div class="report-line secondary">' + line + '</div>';
+    }
+  });
+  return html;
+}
+
+async function generateWeeklyReport(allRecords) {
+  var container = document.getElementById('weeklyReportContainer');
+  var count = allRecords.length;
+
+  container.innerHTML = '<div class="generating-text">正在分析本周记录…</div>';
+
+  var minLoadMs = count === 0 ? 400 : 800;
+  var startTime = Date.now();
+  var resultHtml = '';
+
+  if (count === 0) {
+    resultHtml = generateWeekReportWithoutAI(allRecords);
+  } else {
+    var contents = allRecords.map(function(r) { return r.content; }).join('\n');
+
+    var systemPrompt = '你是一个简洁的记录助手。根据用户本周所有记录生成周报。\n\n输出格式（每行一条，共5行）：\n第1行：本周X条，活跃X天\n第2行：与上周对比。选项：比上周多X条 / 比上周少X条 / 首周记录 / 与上周持平\n第3行：本周关注点。主要聊「XX」，占X%。如果确实没有明显焦点，写"涉及多个方向，没有明显焦点"\n第4行（可选）：一条发现。选项：本周第一次聊XX / 本周没有聊XX / 本周记录比上周更密集。无发现时跳过\n第5行：反馈。必须严格按以下规则：\n- 1-3条 → 这周记了X条。翻一下，哪一条最值得留到下周？\n- 4-7条 → 这周有X条记录，分布较散。试试下周聚焦一个方向。\n- 8条以上 → 这周记录比较多，整理一下，有没有反复出现的词？\n\n风格：不加引子、不评价好坏、不用反问句。每行独立，不堆成段落。发现类内容只陈述事实。\n\n用户本周所有记录：\n' + contents + '\n\n直接输出，不要序号。';
+
+    try {
+      var config = PoBiUtils.getAIConfig();
+      if (!config.apiKey) {
+        resultHtml = generateWeekReportWithoutAI(allRecords);
+      } else {
+        var aiResult = await PoBiUtils.callAI(contents, systemPrompt);
+        resultHtml = formatWeekReportContent(aiResult);
+      }
+    } catch (error) {
+      console.error('周报生成失败:', error);
+      resultHtml = generateWeekReportWithoutAI(allRecords);
+    }
+  }
+
+  var elapsed = Date.now() - startTime;
+  setTimeout(function() {
+    container.innerHTML = resultHtml;
+  }, Math.max(0, minLoadMs - elapsed));
+}
+
+// ── 记录加载 ──
+function loadWeekRecords() {
+  var container = document.getElementById('weekRecordsContainer');
+  var countLabel = document.getElementById('weekRecordCount');
+  if (!container) return;
+
+  var allRecords = PoBiUtils ? PoBiUtils.getWeekRecords() : safeJSON(localStorage.getItem('pobi_records'), []);
+
+  if (countLabel) countLabel.textContent = '(' + allRecords.length + ')';
+
+  if (allRecords.length === 0) {
+    container.innerHTML = '<div style="padding:16px;text-align:center;color:rgba(0,0,0,0.3);font-size:13px;">本周还没有记录</div>';
+    generateWeeklyReport(allRecords);
+    return;
+  }
+
+  container.innerHTML = allRecords.map(function(r, i) {
+    var time = PoBiUtils ? PoBiUtils.formatTime(r.createdAt) : '';
+    var cat = (r.category && r.category !== '全部') ? r.category : '';
+    return '<div class="record-item" data-idx="' + i + '">' +
+      '<div class="record-item-content">' + r.content + '</div>' +
+      '<div class="record-item-meta">' +
+        '<span>' + time + '</span>' +
+        (cat ? '<span class="record-item-category">' + cat + '</span>' : '') +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  container.querySelectorAll('.record-item').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var idx = parseInt(card.dataset.idx);
+      var r = allRecords[idx];
+      if (!r) return;
+      document.getElementById('detailTime').textContent =
+        PoBiUtils ? PoBiUtils.formatTime(r.createdAt) : '';
+      document.getElementById('detailContent').textContent = r.content;
+      document.getElementById('detailPanel').classList.add('active');
+    });
+  });
+
+  generateWeeklyReport(allRecords);
+}
+
+document.getElementById('detailClose').addEventListener('click', function() {
+  document.getElementById('detailPanel').classList.remove('active');
+});
+
+loadWeekRecords();
+</script>
+
+</body>
+</html>

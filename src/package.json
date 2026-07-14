@@ -1,0 +1,17 @@
+﻿{
+  "name": "wall-breaking-horizon",
+  "productName": "破壁视界",
+  "version": "1.0.0",
+  "description": "打破信息茧房，拥抱多元视角 — 桌面版",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

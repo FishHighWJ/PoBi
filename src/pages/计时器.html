@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>专注计时 - 破壁视界</title>
+  <link rel="stylesheet" href="../utils/design-system.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+      padding: 0;
+    }
+
+    /* 遮罩背景 — 去掉，改为全屏融入 */
+    .modal-overlay {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      display: flex;
+      align-items: stretch;
+      justify-content: stretch;
+      z-index: 1;
+    }
+
+    /* 弹窗卡片 — 填满整个面板 */
+    .modal-card {
+      width: 100%;
+      height: 100%;
+      background: var(--color-bg);
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      cursor: default;
+    }
+
+    /* 标题行 — 可拖拽但按钮不拖拽 */
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      user-select: none;
+      background: var(--color-primary);
+      flex-shrink: 0;
+      cursor: grab;
+      -webkit-app-region: drag;
+    }
+    .modal-header:active { cursor: grabbing; }
+
+    .modal-back {
+      font-size: 13px;
+      color: #fff;
+      cursor: grab;
+      transition: all 0.2s ease;
+      padding: 4px 10px;
+      border-radius: 4px;
+      user-select: none;
+      -webkit-app-region: no-drag;
+    }
+    .modal-back:hover { background: rgba(255,255,255,0.15); }
+
+    .modal-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+      letter-spacing: 0.5px;
+    }
+
+    .modal-close {
+      font-size: 16px;
+      color: #fff;
+      cursor: grab;
+      transition: all 0.2s ease;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 6px;
+      user-select: none;
+      -webkit-app-region: no-drag;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.15); }
+
+    /* 内容区域 */
+    .modal-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+      overflow-y: auto;
+    }
+
+    .modal-body::-webkit-scrollbar {
+      width: 4px;
+    }
+    .modal-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .modal-body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+    }
+
+    /* 圆形进度环容器 */
+    .timer-container {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+
+    /* Shape Blur — 鼠标悬停模糊透镜 */
+    .shape-blur {
+      position: absolute;
+      width: 130px;
+      height: 130px;
+      border-radius: 50%;
+      background: radial-gradient(circle at center,
+        rgba(160, 160, 160, 0.45) 0%,
+        rgba(160, 160, 160, 0.15) 35%,
+        transparent 65%);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 5;
+      filter: url('#organicBlur');
+      -webkit-filter: blur(14px);
+    }
+
+    .shape-blur.active {
+      opacity: 1;
+    }
+
+    /* 进度环 Canvas */
+    .progress-ring {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* 计时器文字 */
+    .timer-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .timer-display {
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+      font-size: 42px;
+      font-weight: 700;
+      color: var(--color-primary);
+      letter-spacing: 2px;
+      transition: opacity 0.3s ease;
+    }
+
+    .timer-display.paused {
+      opacity: 0.5;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.7; }
+    }
+
+    /* 状态文字 */
+    .status-text {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin-top: 8px;
+    }
+
+    /* 按钮区域 */
+    .button-group {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .action-btn {
+      font-size: 14px;
+      padding: 10px 24px;
+      border-radius: 8px;
+      cursor: grab;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      border: none;
+      font-family: inherit;
+    }
+
+    .action-btn.secondary {
+      color: var(--color-primary);
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .action-btn.secondary:hover {
+      color: #fff;
+      background: var(--color-primary);
+    }
+
+    .action-btn.primary {
+      color: #fff;
+      background: var(--color-primary);
+    }
+
+    .action-btn.primary:hover {
+      background: #2D3039;
+      transform: scale(1.02);
+    }
+
+    /* 底部统计 */
+    .bottom-stats {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-bottom: 20px;
+    }
+
+    /* 时间设置区域 */
+    .time-settings {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    .settings-label {
+      font-size: 13px;
+      color: rgba(0, 0, 0, 0.6);
+      text-align: center;
+    }
+
+    .preset-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .preset-btn {
+      font-size: 13px;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: grab;
+      transition: all 0.25s ease;
+      font-weight: 500;
+      color: var(--color-primary);
+      background: rgba(0, 0, 0, 0.06);
+      border: 1.5px solid transparent;
+      font-family: inherit;
+    }
+
+    .preset-btn:hover {
+      color: #fff;
+      background: var(--color-primary);
+      transform: scale(1.04);
+    }
+
+    .preset-btn.active {
+      background: var(--color-primary);
+      color: #fff;
+      border-color: rgba(255,255,255,0.3);
+    }
+
+    .preset-btn.active:hover {
+      background: #2D3039;
+      transform: scale(1.04);
+    }
+
+    .custom-input {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .start-btn {
+      font-size: 14px;
+      padding: 10px 40px;
+      border-radius: 8px;
+      cursor: grab;
+      transition: all 0.2s ease;
+      font-weight: 500;
+      color: #fff;
+      background: var(--color-primary);
+      border: none;
+      font-family: inherit;
+      align-self: center;
+    }
+
+    .start-btn:hover {
+      background: #2D3039;
+      transform: scale(1.02);
+    }
+
+    /* 专注完成界面 */
+    .complete-section {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      padding-top: 20px;
+    }
+
+    .complete-section.active {
+      display: flex;
+    }
+
+    .complete-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--color-primary);
+      margin-bottom: 8px;
+    }
+
+    .complete-time {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--color-primary);
+      margin-bottom: 8px;
+    }
+
+    .encourage-msg {
+      font-size: 13px;
+      color: var(--color-primary);
+      text-align: center;
+      line-height: 1.6;
+      margin-bottom: 16px;
+      padding: 8px 14px;
+      background: rgba(0, 0, 0, 0.04);
+      border-radius: 8px;
+      font-style: italic;
+      animation: fadeSlideUp 0.5s ease both;
+      animation-delay: 0.3s;
+    }
+
+    @keyframes fadeSlideUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .complete-input {
+      width: 100%;
+      height: 60px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 8px;
+      padding: 14px 16px;
+      font-size: 14px;
+      color: var(--color-primary);
+      resize: none;
+      outline: none;
+      transition: border-color 0.2s ease;
+      font-family: inherit;
+    }
+
+    .complete-input::placeholder {
+      color: var(--color-text-tertiary);
+    }
+
+    .complete-input:focus {
+      border-color: var(--color-primary);
+      background: #fff;
+    }
+
+    .complete-btn {
+      margin-top: 16px;
+      font-size: 14px;
+      padding: 10px 32px;
+      border-radius: 8px;
+      cursor: grab;
+      background: var(--color-primary);
+      color: #fff;
+      border: none;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .complete-btn:hover {
+      background: #2D3039;
+      transform: scale(1.02);
+    }
+
+    /* 专注中界面 */
+    .focus-section {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .focus-section.active {
+      display: flex;
+    }
+
+    /* 设置界面 */
+    .setup-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      padding: 20px 0;
+    }
+
+    .setup-section.hidden {
+      display: none;
+    }
+
+    .setup-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--color-primary);
+      margin-bottom: 24px;
+    }
+
+    .custom-input input {
+      width: 120px; height: 34px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 6px;
+      padding: 0 12px;
+      font-size: 14px;
+      color: var(--color-primary);
+      outline: none;
+      text-align: center;
+      font-family: inherit;
+      transition: border-color 0.2s ease;
+    }
+    .custom-input input:focus { border-color: var(--color-primary); background: #fff; }
+    .custom-input span { font-size: 14px; color: var(--color-text-secondary); }
+
+    /* 历史记录区域 */
+    .history-section {
+      width: 100%;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0, 0, 0, 0.06);
+      margin-top: auto;
+    }
+
+    .history-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; }
+
+    .history-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 12px; background: rgba(0,0,0,0.03); border-radius: 8px; font-size: 13px;
+    }
+
+    .history-item-name {
+      color: var(--color-primary); font-weight: 500;
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+
+    .history-item-time {
+      color: var(--color-text-secondary);
+      font-family: 'SF Mono', 'Monaco', monospace;
+      margin-left: 12px; flex-shrink: 0;
+    }
+
+    .history-empty {
+      text-align: center; font-size: 12px;
+      color: var(--color-text-tertiary); padding: 20px 0;
+    }
+
+    /* 成功提示 */
+    .success-toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 10000;
+      pointer-events: none;
+    }
+
+    .success-toast.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+  </style>
+</head>
+<body>
+  <!-- SVG 滤镜：有机形状模糊 -->
+  <svg style="position:fixed;width:0;height:0;" aria-hidden="true">
+    <defs>
+      <filter id="organicBlur" x="-50%" y="-50%" width="200%" height="200%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" seed="2" result="noise" />
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="22" xChannelSelector="R" yChannelSelector="G" result="displaced" />
+        <feGaussianBlur in="displaced" stdDeviation="10" result="blurred" />
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- 成功提示 -->
+  <div class="success-toast" id="successToast">已保存</div>
+
+  <!-- 遮罩层 -->
+  <div class="modal-overlay" id="modalOverlay">
+    <!-- 弹窗卡片 -->
+    <div class="modal-card">
+      <!-- 标题行 -->
+      <div class="modal-header">
+        <span class="modal-back" id="modalBack">← 返回</span>
+        <span class="modal-title" id="modalTitle">专注模式</span>
+        <span class="modal-close" id="modalClose">✕</span>
+      </div>
+
+      <!-- 内容区域 -->
+      <div class="modal-body">
+        <!-- 设置界面 -->
+        <div class="setup-section" id="setupSection">
+          <div class="setup-title">设置专注时间</div>
+          
+          <div class="preset-buttons">
+            <button class="preset-btn" data-time="15">15分钟</button>
+            <button class="preset-btn active" data-time="25">25分钟</button>
+            <button class="preset-btn" data-time="30">30分钟</button>
+          </div>
+          
+          <div class="custom-input" style="margin-top: 16px;">
+            <input type="number" id="customTime" min="1" max="120" placeholder="自定义">
+            <span>分钟</span>
+          </div>
+          
+          <button class="start-btn" id="startBtn" style="margin-top: 20px;">开始专注</button>
+        </div>
+
+        <!-- 专注中界面 -->
+        <div class="focus-section" id="focusSection">
+          <!-- 圆形进度环 -->
+          <div class="timer-container glass-strong">
+            <canvas class="progress-ring" id="progressRing"></canvas>
+            <div class="shape-blur" id="shapeBlur"></div>
+            <div class="timer-content">
+              <div class="timer-display" id="timerDisplay">00:00</div>
+              <div class="status-text" id="statusText">专注中...</div>
+            </div>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div class="button-group">
+            <button class="action-btn secondary" id="pauseBtn">暂停</button>
+            <button class="action-btn primary" id="endBtn">结束</button>
+          </div>
+
+          <!-- 底部统计 -->
+          <div class="bottom-stats" id="bottomStats">本次专注：0分钟</div>
+        </div>
+
+        <!-- 专注完成界面 -->
+        <div class="complete-section" id="completeSection">
+          <div class="complete-title">专注完成</div>
+          <div class="complete-time" id="completeTime">00:00</div>
+          <div class="encourage-msg" id="encourageMsg"></div>
+          <textarea class="complete-input" id="focusNameInput" placeholder="输入本次专注名称（选填）"></textarea>
+          <button class="complete-btn" id="saveBtn">保存记录</button>
+        </div>
+
+        <!-- 历史记录区域 -->
+        <div class="history-section">
+          <div class="history-title">历史专注记录</div>
+          <div class="history-list" id="historyList">
+            <div class="history-empty">暂无记录</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+<script src="../utils/shared.js"></script>
+<script>ThemeManager.init();</script>
+<script>
+    // 状态管理
+    let seconds = 0;
+    let totalSeconds = 25 * 60;
+    let isRunning = false;
+    let timerInterval = null;
+
+    // DOM元素
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalClose = document.getElementById('modalClose');
+    const modalTitle = document.getElementById('modalTitle');
+    const timerDisplay = document.getElementById('timerDisplay');
+    const statusText = document.getElementById('statusText');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const endBtn = document.getElementById('endBtn');
+    const bottomStats = document.getElementById('bottomStats');
+    const setupSection = document.getElementById('setupSection');
+    const focusSection = document.getElementById('focusSection');
+    const completeSection = document.getElementById('completeSection');
+    const completeTime = document.getElementById('completeTime');
+    const saveBtn = document.getElementById('saveBtn');
+    const focusNameInput = document.getElementById('focusNameInput');
+    const progressRing = document.getElementById('progressRing');
+    const presetButtons = document.querySelectorAll('.preset-btn');
+    const customTimeInput = document.getElementById('customTime');
+    const startBtn = document.getElementById('startBtn');
+    const historyList = document.getElementById('historyList');
+    const successToast = document.getElementById('successToast');
+
+    // 选中的时间
+    let selectedMinutes = 25;
+
+    // 初始化Canvas尺寸
+    progressRing.width = 200;
+    progressRing.height = 200;
+
+    // Canvas上下文
+    const ctx = progressRing.getContext('2d');
+    const radius = progressRing.width / 2 - 12;
+    const centerX = progressRing.width / 2;
+    const centerY = progressRing.height / 2;
+
+    // 绘制进度环
+    function drawProgressRing() {
+      ctx.clearRect(0, 0, progressRing.width, progressRing.height);
+
+      // 背景圆环
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+
+      // 进度圆环
+      const progress = totalSeconds > 0 ? seconds / totalSeconds : 0;
+      const startAngle = -Math.PI / 2;
+      const endAngle = startAngle + (2 * Math.PI * progress);
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.strokeStyle = '#1A1D27';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+    }
+
+    // 格式化时间
+    function formatTime(totalSeconds) {
+      const mins = Math.floor(totalSeconds / 60);
+      const secs = totalSeconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // 更新显示
+    function updateDisplay() {
+      const remainingSeconds = totalSeconds - seconds;
+      timerDisplay.textContent = formatTime(remainingSeconds > 0 ? remainingSeconds : 0);
+      completeTime.textContent = formatTime(seconds);
+      const minutes = Math.floor(seconds / 60);
+      bottomStats.textContent = `本次专注：${minutes}分钟`;
+      drawProgressRing();
+
+      if (remainingSeconds <= 0 && isRunning) {
+        endTimer();
+      }
+    }
+
+    // 开始计时
+    function startTimer() {
+      if (timerInterval) return;
+      isRunning = true;
+      timerInterval = setInterval(() => {
+        seconds++;
+        updateDisplay();
+      }, 1000);
+    }
+
+    // 暂停计时
+    function pauseTimer() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      isRunning = false;
+    }
+
+    // 鼓励话语库 — 融合破壁/成长/专注主题
+    var encourageMessages = [
+      '每一次专注，都是在凿开认知的围墙。今天你又破了一小块壁。',
+      '专注的你，就像一束光，穿透了信息茧房的迷雾。',
+      '比起刷不完的推送，你选择了沉下心。这本身就是一种破壁。',
+      '算法想让你分心，但你赢了自己。继续保持这份清醒。',
+      '你刚刚创造了一段不被算法打扰的时间——这很珍贵。',
+      '破壁不是一次性的壮举，而是像这样一次又一次的专注累积。',
+      '今天的专注里，藏着明天更宽广的视角。',
+      '你停下来专注的这一刻，已经超越了昨天被信息裹挟的自己。',
+      '种一棵树最好的时间是十年前，破一层壁最好的时间就是刚才。',
+      '别人在刷屏，你在专注——这就是你和茧房之间最温柔的距离。',
+      '专注不是逃避，是为了更有力地回来看清世界。',
+      '你刚刚和浮躁打了一场漂亮的仗。赢了。',
+      '这世界上有两种人：被算法喂养的，和掌控自己注意力的。你选择了后者。',
+      '别小看这短短几分钟——破壁者的每一步都算数。',
+      '比知识更重要的，是你愿意静下来思考的勇气。'
+    ];
+
+    // 结束计时
+    function endTimer() {
+      pauseTimer();
+      focusSection.classList.remove('active');
+      completeSection.classList.add('active');
+      modalTitle.textContent = '专注完成';
+      // 随机选一条鼓励语
+      var msgEl = document.getElementById('encourageMsg');
+      if (msgEl) {
+        var idx = Math.floor(Math.random() * encourageMessages.length);
+        msgEl.textContent = encourageMessages[idx];
+      }
+    }
+
+    // 重置并开始新计时
+    function startNewTimer(minutes) {
+      pauseTimer();
+      seconds = 0;
+      totalSeconds = minutes * 60;
+      isRunning = true;
+      
+      timerDisplay.textContent = formatTime(totalSeconds);
+      timerDisplay.classList.remove('paused');
+      statusText.textContent = '专注中...';
+      pauseBtn.textContent = '暂停';
+      pauseBtn.classList.remove('primary');
+      pauseBtn.classList.add('secondary');
+      modalTitle.textContent = '专注中';
+      
+      setupSection.classList.add('hidden');
+      focusSection.classList.add('active');
+      completeSection.classList.remove('active');
+      
+      updateDisplay();
+      startTimer();
+    }
+
+    // 暂停按钮点击
+    pauseBtn.addEventListener('click', () => {
+      if (isRunning) {
+        pauseTimer();
+        pauseBtn.textContent = '继续';
+        pauseBtn.classList.remove('secondary');
+        pauseBtn.classList.add('primary');
+        statusText.textContent = '已暂停';
+        timerDisplay.classList.add('paused');
+        modalTitle.textContent = '已暂停';
+      } else {
+        startTimer();
+        isRunning = true;
+        pauseBtn.textContent = '暂停';
+        pauseBtn.classList.remove('primary');
+        pauseBtn.classList.add('secondary');
+        statusText.textContent = '专注中...';
+        timerDisplay.classList.remove('paused');
+        modalTitle.textContent = '专注中';
+      }
+    });
+
+    // 结束按钮点击
+    endBtn.addEventListener('click', () => {
+      endTimer();
+    });
+
+    // 保存按钮点击
+    saveBtn.addEventListener('click', () => {
+      const focusName = focusNameInput.value.trim() || '未命名专注';
+      const duration = seconds;
+      
+      const record = {
+        id: Date.now().toString(),
+        name: focusName,
+        duration: duration,
+        time: new Date().toLocaleString('zh-CN'),
+        date: new Date().toISOString().split('T')[0]
+      };
+      
+      const history = getHistory();
+      history.unshift(record);
+      localStorage.setItem('pobi_focus_history', JSON.stringify(history));
+      
+      showToast('已保存');
+      
+      setTimeout(() => {
+        resetToSetup();
+      }, 1000);
+    });
+
+    // 返回设置界面
+    function resetToSetup() {
+      pauseTimer();
+      seconds = 0;
+      totalSeconds = selectedMinutes * 60;
+      
+      focusNameInput.value = '';
+      completeSection.classList.remove('active');
+      focusSection.classList.remove('active');
+      setupSection.classList.remove('hidden');
+      modalTitle.textContent = '专注模式';
+      
+      loadHistory();
+    }
+
+    // 获取历史记录
+    function getHistory() {
+      try {
+        const data = localStorage.getItem('pobi_focus_history');
+        return data ? JSON.parse(data) : [];
+      } catch {
+        return [];
+      }
+    }
+
+    // 加载历史记录
+    function loadHistory() {
+      const history = getHistory();
+      
+      if (history.length === 0) {
+        historyList.innerHTML = '<div class="history-empty">暂无记录</div>';
+        return;
+      }
+      
+      historyList.innerHTML = history.map(item => `
+        <div class="history-item">
+          <span class="history-item-name">${escapeHtml(item.name)}</span>
+          <span class="history-item-time">${formatTime(item.duration)}</span>
+        </div>
+      `).join('');
+    }
+
+    // HTML转义
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // 显示提示
+    function showToast(msg) {
+      successToast.textContent = msg;
+      successToast.classList.add('visible');
+      setTimeout(() => {
+        successToast.classList.remove('visible');
+      }, 2000);
+    }
+
+    // 关闭/返回按钮已由文末守护脚本统一管理
+
+    // 预设时间按钮点击
+    presetButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const time = parseInt(btn.dataset.time);
+        
+        presetButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        customTimeInput.value = '';
+        selectedMinutes = time;
+      });
+    });
+
+    // 自定义时间输入
+    customTimeInput.addEventListener('change', () => {
+      const time = parseInt(customTimeInput.value);
+      if (time && time > 0 && time <= 120) {
+        presetButtons.forEach(b => b.classList.remove('active'));
+        selectedMinutes = time;
+      }
+    });
+
+    // 开始按钮点击
+    startBtn.addEventListener('click', () => {
+      if (selectedMinutes && selectedMinutes > 0 && selectedMinutes <= 120) {
+        startNewTimer(selectedMinutes);
+      }
+    });
+
+    // ================================================================
+    // Shape Blur — 鼠标悬停模糊透镜
+    // ================================================================
+    const timerContainer = document.querySelector('.timer-container');
+    const shapeBlur = document.getElementById('shapeBlur');
+
+    let blurTargetX = 0;
+    let blurTargetY = 0;
+    let blurCurrentX = 0;
+    let blurCurrentY = 0;
+    let isBlurHovering = false;
+    let blurInitialized = false;
+
+    timerContainer.addEventListener('mousemove', (e) => {
+      const rect = timerContainer.getBoundingClientRect();
+      blurTargetX = e.clientX - rect.left;
+      blurTargetY = e.clientY - rect.top;
+
+      if (!isBlurHovering) {
+        isBlurHovering = true;
+        shapeBlur.classList.add('active');
+        if (!blurInitialized) {
+          blurCurrentX = blurTargetX;
+          blurCurrentY = blurTargetY;
+          blurInitialized = true;
+        }
+      }
+    });
+
+    timerContainer.addEventListener('mouseleave', () => {
+      isBlurHovering = false;
+      shapeBlur.classList.remove('active');
+    });
+
+    // lerp 动画循环
+    function animateShapeBlur() {
+      if (isBlurHovering) {
+        const ease = 0.1;
+        blurCurrentX += (blurTargetX - blurCurrentX) * ease;
+        blurCurrentY += (blurTargetY - blurCurrentY) * ease;
+        shapeBlur.style.left = blurCurrentX + 'px';
+        shapeBlur.style.top  = blurCurrentY + 'px';
+      }
+      requestAnimationFrame(animateShapeBlur);
+    }
+
+    requestAnimationFrame(animateShapeBlur);
+
+    // 初始化
+    loadHistory();
+    drawProgressRing();
+  </script>
+
+  <!-- 按钮守护 -->
+  <script>
+  (function() {
+    var api = window.electronAPI;
+    var back = document.getElementById('modalBack');
+    var close = document.getElementById('modalClose');
+    if (back) back.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (api && api.openPanel) api.openPanel('记录面板');
+    });
+    if (close) close.addEventListener('click', function(e) {
+      e.stopPropagation();
+      if (api && api.closePanel) api.closePanel();
+    });
+  })();
+  </script>
+
+</body>
+</html>

@@ -6,6 +6,9 @@ dist/
 build/
 out/
 
+# Electron builder
+release-builds/
+
 # OS files
 .DS_Store
 Thumbs.db
@@ -24,3 +27,6 @@ desktop.ini
 # Logs
 *.log
 npm-debug.log*
+
+# User data (runtime)
+userData/

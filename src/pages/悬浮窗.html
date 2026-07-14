@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>破壁视界</title>
+  <link rel="stylesheet" href="../utils/design-system.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+
+    .float-bar {
+      position: absolute;
+      top: 6px;
+      left: 0;
+      right: 0;
+      height: 44px;
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 12px;
+      z-index: 1000;
+      transition: background 0.35s ease, box-shadow 0.35s ease, border-color 0.35s ease;
+      -webkit-app-region: drag;
+      user-select: none;
+      cursor: default;
+    }
+
+    /* 悬浮窗 hover — 仅单个图标变色 */
+    .float-bar:hover {
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .float-bar::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 12px;
+      right: 12px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--color-accent-purple), var(--color-accent-orange), var(--color-accent-blue));
+      border-radius: 2px 2px 0 0;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .logo {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      transition: stroke 0.35s ease;
+    }
+
+    .icon-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: transparent;
+      border: none;
+      cursor: default;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-secondary);
+      transition: background 0.25s ease, color 0.25s ease, transform 0.25s ease;
+      flex-shrink: 0;
+      position: relative;
+      -webkit-app-region: no-drag;
+    }
+
+    .icon-btn:hover {
+      background: var(--color-primary);
+      color: #fff;
+      transform: scale(1.08);
+    }
+
+    .icon-btn:active {
+      transform: scale(0.94);
+    }
+
+    .icon-btn.active {
+      background: var(--color-primary);
+      color: #fff;
+    }
+
+    .icon-btn svg {
+      width: 16px;
+      height: 16px;
+      stroke-width: 1.5px;
+      stroke: currentColor;
+      fill: none;
+    }
+
+    .icon-btn.active svg {
+      stroke-width: 2.5px;
+    }
+
+    .input-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .input-field {
+      width: 100%;
+      max-width: 140px;
+      height: 30px;
+      background: rgba(0, 0, 0, 0.03);
+      border: none;
+      border-radius: 8px;
+      padding: 0 12px;
+      font-size: 13px;
+      color: var(--color-text);
+      outline: none;
+      transition: width 0.3s ease, background 0.2s ease;
+      -webkit-app-region: no-drag;
+    }
+
+    .input-field:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    .input-field:focus {
+      width: 140px;
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    .input-field::placeholder {
+      color: var(--color-text-tertiary);
+    }
+
+    .expanded-textarea {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 440px;
+      min-height: 80px;
+      max-height: 240px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 12px;
+      font-size: 14px;
+      color: var(--color-text);
+      font-family: inherit;
+      resize: none;
+      outline: none;
+      z-index: 1001;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: all 0.3s ease;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+
+    .expanded-textarea.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .expanded-textarea::placeholder {
+      color: var(--color-text-tertiary);
+    }
+
+    .resize-handle {
+      display: none; /* 文本域自动撑高，不再需要手动拖拽 */
+    }
+
+    /* ========== 专注模式下拉卡片 ========== */
+    .focus-timer {
+      position: absolute;
+      top: 54px;
+      left: 0;
+      right: 0;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: all 0.3s ease;
+      z-index: 999;
+      pointer-events: none;
+    }
+
+    .focus-timer.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .focus-timer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .focus-timer-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--color-primary);
+    }
+
+    .focus-timer-close {
+      width: 24px;
+      height: 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-tertiary);
+      font-size: 16px;
+      transition: all 0.15s ease;
+    }
+
+    .focus-timer-close:hover {
+      color: var(--color-primary);
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .focus-timer-display {
+      font-family: 'SF Mono', 'Monaco', monospace;
+      font-size: 36px;
+      font-weight: 700;
+      color: var(--color-primary);
+      text-align: center;
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+    }
+
+    .focus-timer-display.paused {
+      opacity: 0.4;
+    }
+
+    .focus-timer-controls {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .focus-timer-btn {
+      font-size: 13px;
+      padding: 8px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-weight: 500;
+      border: none;
+      font-family: inherit;
+    }
+
+    .focus-timer-btn.start {
+      background: var(--color-primary);
+      color: #fff;
+    }
+    .focus-timer-btn.start:hover {
+      background: #2D3039;
+    }
+
+    .focus-timer-btn.pause {
+      background: rgba(0, 0, 0, 0.06);
+      color: var(--color-primary);
+    }
+    .focus-timer-btn.pause:hover {
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .focus-timer-btn.end {
+      background: transparent;
+      color: rgba(0, 0, 0, 0.5);
+    }
+    .focus-timer-btn.end:hover {
+      color: var(--color-primary);
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    /* 时间设置区 */
+    .focus-time-settings {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .focus-preset-row {
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+    }
+
+    .focus-preset-btn {
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      background: rgba(0,0,0,0.04);
+      color: rgba(0,0,0,0.6);
+      border: none;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+
+    .focus-preset-btn:hover { background: rgba(0,0,0,0.08); }
+    .focus-preset-btn.active { background: var(--color-primary); color: #fff; }
+
+    .focus-custom-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .focus-custom-input {
+      flex: 1;
+      height: 32px;
+      background: rgba(0,0,0,0.03);
+      border: 1px solid rgba(0,0,0,0.06);
+      border-radius: 6px;
+      padding: 0 10px;
+      font-size: 12px;
+      color: var(--color-primary);
+      outline: none;
+      font-family: inherit;
+      text-align: center;
+    }
+    .focus-custom-input:focus { border-color: rgba(0,0,0,0.2); }
+
+    /* 完成界面 */
+    .focus-complete {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .focus-complete-time {
+      font-family: 'SF Mono', 'Monaco', monospace;
+      font-size: 28px; font-weight: 700; color: var(--color-primary);
+      letter-spacing: 2px;
+    }
+    .focus-title-input {
+      width: 100%; height: 34px;
+      background: rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 6px; padding: 0 10px; font-size: 13px;
+      color: var(--color-primary); outline: none; font-family: inherit; text-align: center;
+    }
+    .focus-title-input:focus { border-color: rgba(0,0,0,0.2); }
+    .focus-title-input::placeholder { color: var(--color-text-tertiary); }
+
+    /* 话筒录音中 — 脉冲呼吸动画 */
+    .icon-btn.recording {
+      background: #E74C3C;
+      color: #fff;
+      animation: mic-pulse 0.8s ease-in-out infinite;
+    }
+
+    @keyframes mic-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.5); transform: scale(1); }
+      50%      { box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); transform: scale(1.1); }
+    }
+
+    /* 录音完成 — 绿色确认闪烁 */
+    .icon-btn.recording-done {
+      background: #34C759;
+      color: #fff;
+      animation: mic-done 0.6s ease-out forwards;
+    }
+
+    @keyframes mic-done {
+      0%   { transform: scale(1.1); box-shadow: 0 0 0 4px rgba(52, 199, 89, 0.4); }
+      100% { transform: scale(1);   box-shadow: 0 0 0 0 rgba(52, 199, 89, 0); }
+    }
+
+    /* 保存提示 toast */
+    .save-toast {
+      position: fixed;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--color-primary);
+      color: #fff;
+      font-size: 13px;
+      padding: 8px 20px;
+      border-radius: 8px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 10002;
+      pointer-events: none;
+    }
+
+    .save-toast.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    .divider {
+      width: 1px;
+      height: 20px;
+      background: rgba(0, 0, 0, 0.06);
+      margin: 0 4px;
+      flex-shrink: 0;
+    }
+
+    #spark-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+      </style>
+</head>
+<body>
+  <canvas id="spark-canvas"></canvas>
+  <div class="float-bar glass glow-purple" id="floatBar">
+    <svg class="logo" viewBox="0 0 24 24" fill="none">
+      <path d="M12 4A8 8 0 0 0 5 9.5A8 8 0 0 0 12 20A8 8 0 0 0 19 14.5" fill="none" stroke="#000000" stroke-width="1.2" stroke-linecap="butt"/>
+      <path d="M16 8l4 -4" stroke="#000000" stroke-width="1.2" stroke-linecap="butt"/>
+      <path d="M20 4l-2 2l-2 -2" stroke="#000000" stroke-width="1.2" stroke-linecap="butt" stroke-linejoin="miter"/>
+    </svg>
+    
+    <button class="icon-btn" id="btn-mic" title="语音输入（点击开始录音）">
+      <svg viewBox="0 0 24 24">
+        <rect x="9" y="3" width="6" height="11" rx="3"/>
+        <path d="M5 10v1a7 7 0 0 0 14 0v-1"/>
+        <line x1="12" y1="18" x2="12" y2="21"/>
+        <line x1="8" y1="21" x2="16" y2="21"/>
+      </svg>
+    </button>
+    
+    <div class="input-wrapper" id="inputWrapper">
+      <input type="text" class="input-field" id="inputField" placeholder="输入...">
+      <textarea class="expanded-textarea glass-strong" id="expandedTextarea" placeholder="输入更多内容..."></textarea>
+      <div class="resize-handle" id="resizeHandle">
+        <svg viewBox="0 0 24 24">
+          <path d="M20 14H14v6h6v-6zm-8-2h6v6h-6v-6zm-8 6h6v6H4v-6zm0-8h6v6H4v-6z"/>
+        </svg>
+      </div>
+    </div>
+    
+    <button class="icon-btn" id="btn-save" title="保存记录">
+      <svg viewBox="0 0 24 24">
+        <polyline points="20 6 9 17 4 12"/>
+      </svg>
+    </button>
+    
+    <button class="icon-btn" id="btn-view" title="查看">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>
+      </svg>
+    </button>
+    
+    <div class="divider"></div>
+    
+    <button class="icon-btn" id="btn-focus" title="专注模式">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7v5l3 3"/>
+      </svg>
+    </button>
+    
+    <button class="icon-btn" id="btn-settings" title="设置（API / 导出数据）">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="btn-close" title="关闭悬浮窗（Alt+Space 可重新显示）">
+      <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round">
+        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- 专注模式下拉计时器 -->
+  <div class="focus-timer glass" id="focusTimer">
+    <div class="focus-timer-header">
+      <span class="focus-timer-title">专注模式</span>
+      <span class="focus-timer-close" id="focusTimerClose">×</span>
+    </div>
+    <div class="focus-timer-display" id="focusTimerDisplay">25:00</div>
+    <!-- 时间设置区 -->
+    <div class="focus-time-settings" id="focusTimeSettings">
+      <div class="focus-preset-row">
+        <button class="focus-preset-btn" data-min="15">15分钟</button>
+        <button class="focus-preset-btn active" data-min="25">25分钟</button>
+        <button class="focus-preset-btn" data-min="30">30分钟</button>
+        <button class="focus-preset-btn" data-min="45">45分钟</button>
+      </div>
+      <div class="focus-custom-row">
+        <input class="focus-custom-input" id="focusCustomInput" type="number" min="1" max="120" placeholder="自定义分钟">
+        <button class="focus-timer-btn start" id="focusStartBtn">开始计时</button>
+      </div>
+    </div>
+    <!-- 计时中控制 -->
+    <div class="focus-timer-controls" id="focusTimerControls" style="display:none;">
+      <button class="focus-timer-btn pause" id="focusPauseBtn">暂停</button>
+      <button class="focus-timer-btn end" id="focusEndBtn">结束</button>
+    </div>
+    <!-- 完成后输入标题 -->
+    <div class="focus-complete" id="focusComplete" style="display:none;">
+      <div class="focus-complete-time" id="focusCompleteTime">25:00</div>
+      <input class="focus-title-input" id="focusTitleInput" placeholder="给这次专注起个标题...">
+      <button class="focus-timer-btn start" id="focusSaveBtn">保存到记录</button>
+    </div>
+  </div>
+
+  <!-- 保存提示 -->
+  <div class="save-toast" id="saveToast">保存成功</div>
+
+  
+<script src="../utils/shared.js"></script>
+<script>ThemeManager.init();</script>
+<script>
+    // ClickSpark - 纯 JavaScript 实现
+    
+    // 初始化 ClickSpark
+    const clickSpark = new ClickSpark({
+      sparkColor: '#666',
+      sparkSize: 6,
+      sparkRadius: 12,
+      sparkCount: 8,
+      duration: 400
+    });
+
+    const floatBar = document.getElementById('floatBar');
+    const inputField = document.getElementById('inputField');
+    const expandedTextarea = document.getElementById('expandedTextarea');
+    const btnFocus = document.getElementById('btn-focus');
+    const resizeHandle = document.getElementById('resizeHandle');
+
+    let isResizing = false;
+    let startX, startY, startWidth, startHeight;
+
+    inputField.addEventListener('focus', () => {
+      expandedTextarea.classList.add('visible');
+      resizeHandle.classList.add('visible');
+      expandedTextarea.value = inputField.value;
+      expandedTextarea.focus();
+      // 展开悬浮窗，露出下方的大输入区
+      if (window.electronAPI) window.electronAPI.expandFloat();
+    });
+
+    inputField.addEventListener('input', () => {
+      expandedTextarea.value = inputField.value;
+    });
+
+    // 自动撑高 + 同步到单行输入框
+    function autoGrowTextarea() {
+      expandedTextarea.style.height = 'auto';
+      expandedTextarea.style.height = Math.min(expandedTextarea.scrollHeight, 240) + 'px';
+    }
+    expandedTextarea.addEventListener('input', () => {
+      inputField.value = expandedTextarea.value;
+      autoGrowTextarea();
+    });
+
+    expandedTextarea.addEventListener('blur', () => {
+      // 延迟判断焦点转移，300ms 后如果没有任何相关元素获得焦点则收起
+      var blurCheckTimer = setTimeout(() => {
+        if (!inputField.matches(':focus') && !expandedTextarea.matches(':focus') && !resizeHandle.matches(':hover')) {
+          expandedTextarea.classList.remove('visible');
+          resizeHandle.classList.remove('visible');
+          if (window.electronAPI) window.electronAPI.collapseFloat();
+        }
+      }, 300);
+      // 如果短时间内重新聚焦，取消收起
+      expandedTextarea._blurTimer = blurCheckTimer;
+    });
+    expandedTextarea.addEventListener('focus', () => {
+      if (expandedTextarea._blurTimer) {
+        clearTimeout(expandedTextarea._blurTimer);
+        expandedTextarea._blurTimer = null;
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      const isInsideBar = floatBar.contains(e.target);
+      const isInsideTextarea = expandedTextarea.contains(e.target);
+      const isResizeHandle = resizeHandle.contains(e.target);
+
+      if (!isInsideBar && !isInsideTextarea && !isResizeHandle && expandedTextarea.classList.contains('visible')) {
+        expandedTextarea.classList.remove('visible');
+        resizeHandle.classList.remove('visible');
+        inputField.blur();
+        if (window.electronAPI) window.electronAPI.collapseFloat();
+      }
+    });
+
+    // ================================================================
+    // 专注模式 — 下拉计时器
+    // ================================================================
+    const focusTimer       = document.getElementById('focusTimer');
+    const focusTimerClose  = document.getElementById('focusTimerClose');
+    const focusTimerDisplay = document.getElementById('focusTimerDisplay');
+    const focusStartBtn    = document.getElementById('focusStartBtn');
+    const focusPauseBtn    = document.getElementById('focusPauseBtn');
+    const focusEndBtn      = document.getElementById('focusEndBtn');
+
+    const focusTimeSettings = document.getElementById('focusTimeSettings');
+    const focusTimerControls = document.getElementById('focusTimerControls');
+    const focusCustomInput   = document.getElementById('focusCustomInput');
+
+    let focusSeconds   = 0;
+    let focusTotalSec  = 25 * 60;
+    let focusInterval  = null;
+    let focusRunning   = false;
+
+    function updateFocusDisplay() {
+      const remain = focusTotalSec - focusSeconds;
+      const m = Math.floor(Math.max(0, remain) / 60).toString().padStart(2, '0');
+      const s = (Math.max(0, remain) % 60).toString().padStart(2, '0');
+      focusTimerDisplay.textContent = `${m}:${s}`;
+      if (remain <= 0) endFocus();
+    }
+
+    function resetFocusTimer() {
+      pauseFocus();
+      focusSeconds = 0;
+      focusRunning = false;
+      focusTimerDisplay.classList.remove('paused');
+      // 显示时间设置，隐藏控制按钮
+      focusTimeSettings.style.display = 'flex';
+      focusTimerControls.style.display = 'none';
+      // 重置到选中的预设
+      const activePreset = document.querySelector('.focus-preset-btn.active');
+      focusTotalSec = (activePreset ? parseInt(activePreset.dataset.min) : 25) * 60;
+      updateFocusDisplay();
+    }
+
+    function startFocus() {
+      if (focusRunning) return;
+      // 检查自定义输入
+      const customMin = parseInt(focusCustomInput.value);
+      if (customMin && customMin > 0 && customMin <= 120) {
+        focusTotalSec = customMin * 60;
+      }
+      focusSeconds = 0;
+      focusRunning = true;
+      focusTimerDisplay.classList.remove('paused');
+      // 切换到计时中界面
+      focusTimeSettings.style.display = 'none';
+      focusTimerControls.style.display = 'flex';
+      updateFocusDisplay();
+      focusInterval = setInterval(() => {
+        focusSeconds++;
+        updateFocusDisplay();
+      }, 1000);
+    }
+
+    function pauseFocus() {
+      focusRunning = false;
+      clearInterval(focusInterval);
+      focusTimerDisplay.classList.add('paused');
+    }
+
+    const focusComplete   = document.getElementById('focusComplete');
+    const focusCompleteTime = document.getElementById('focusCompleteTime');
+    const focusTitleInput = document.getElementById('focusTitleInput');
+    const focusSaveBtn    = document.getElementById('focusSaveBtn');
+
+    function endFocus() {
+      pauseFocus();
+      // 显示完成界面
+      const elapsed = focusSeconds;
+      const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+      const s = (elapsed % 60).toString().padStart(2, '0');
+      focusCompleteTime.textContent = `${m}:${s}`;
+      focusTimerDisplay.style.display = 'none';
+      focusTimeSettings.style.display = 'none';
+      focusTimerControls.style.display = 'none';
+      focusComplete.style.display = 'flex';
+      focusTitleInput.value = '';
+      setTimeout(() => focusTitleInput.focus(), 200);
+    }
+
+    focusSaveBtn.addEventListener('click', () => {
+      const title = focusTitleInput.value.trim() || ('专注 ' + focusCompleteTime.textContent);
+      const records = safeJSON(localStorage.getItem('pobi_records'), []);
+      const newId = records.length > 0 ? Math.max(...records.map(r => r.id)) + 1 : 1;
+      records.unshift({
+        id: newId,
+        content: title + ' — 专注时长 ' + focusCompleteTime.textContent,
+        category: '全部',
+        createdAt: new Date().toISOString(),
+      });
+      localStorage.setItem('pobi_records', JSON.stringify(records));
+      // 重置
+      focusComplete.style.display = 'none';
+      focusTimerDisplay.style.display = 'block';
+      resetFocusTimer();
+      focusTimer.classList.remove('visible');
+      btnFocus.classList.remove('active');
+      showSaveToast('已保存到记录');
+    });
+
+    // 预设时间按钮
+    document.querySelectorAll('.focus-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.focus-preset-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        focusCustomInput.value = '';
+        focusTotalSec = parseInt(btn.dataset.min) * 60;
+        focusSeconds = 0;
+        updateFocusDisplay();
+      });
+    });
+
+    // 专注按钮→侧面板打开完整计时器（由文末守护脚本处理）
+    // 下拉计时器相关代码保留作为内联备选，但不再主动绑定事件
+
+    // ================================================================
+    // 语音输入 — 由底部守护脚本统一管理（MediaRecorder + SpeechRecognition）
+    // 此处不再重复绑定，避免双录音冲突
+    // ================================================================
+    const btnMic = document.getElementById('btn-mic');
+    // btnMic 的点击事件由底部守护脚本统一注册
+
+    // 保存按钮 — 存入 localStorage
+    const saveToast = document.getElementById('saveToast');
+    let saveToastTimer = null;
+
+    function showSaveToast(msg) {
+      saveToast.textContent = msg;
+      saveToast.classList.add('visible');
+      clearTimeout(saveToastTimer);
+      saveToastTimer = setTimeout(() => saveToast.classList.remove('visible'), 2000);
+    }
+
+    // 保存按钮已移至文末独立脚本
+
+    // 按钮事件已移至文末独立脚本（确保即使中间代码出错也能注册）
+    function updateResizeHandlePosition() {
+      const textareaWidth = expandedTextarea.offsetWidth;
+      resizeHandle.style.left = `${textareaWidth}px`;
+      resizeHandle.style.top = `calc(100% + 8px + ${expandedTextarea.offsetHeight - 16}px)`;
+    }
+
+    resizeHandle.addEventListener('mousedown', (e) => {
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = expandedTextarea.offsetWidth;
+      startHeight = expandedTextarea.offsetHeight;
+      
+      document.addEventListener('mousemove', onResize);
+      document.addEventListener('mouseup', stopResize);
+      e.preventDefault();
+    });
+
+    function onResize(e) {
+      if (!isResizing) return;
+
+      const width = startWidth + (e.clientX - startX);
+      const height = startHeight + (e.clientY - startY);
+
+      expandedTextarea.style.width = `${Math.max(200, Math.min(500, width))}px`;
+      expandedTextarea.style.height = `${Math.max(80, Math.min(300, height))}px`;
+      updateResizeHandlePosition();
+    }
+
+    function stopResize() {
+      isResizing = false;
+      document.removeEventListener('mousemove', onResize);
+      document.removeEventListener('mouseup', stopResize);
+    }
+  </script>
+
+  <!-- 关键按钮独立脚本 —— 即使上面脚本出错，核心按钮仍然可用 -->
+  <script>
+  (function() {
+    var api = window.electronAPI;
+    var toastTimer = null;
+
+    function showToast(msg) {
+      var t = document.getElementById('saveToast');
+      if (!t) { console.warn('[Toast] saveToast 元素不存在'); return; }
+      t.textContent = msg;
+      t.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function() { t.classList.remove('visible'); }, 2500);
+    }
+
+    function ensure(id, action) {
+      var el = document.getElementById(id);
+      if (el) {
+        // 先移除旧监听器再绑定新监听器，避免重复注册
+        el.removeEventListener('click', action);
+        el.addEventListener('click', action);
+        console.log('[按钮] 已注册: ' + id);
+      }
+      else { console.warn('[按钮] 找不到元素: ' + id); }
+    }
+
+    // ── 保存按钮（纯 localStorage，不依赖 electronAPI）──
+    ensure('btn-save', function() {
+      var input = document.getElementById('inputField');
+      var textarea = document.getElementById('expandedTextarea');
+      var resizeHandle = document.getElementById('resizeHandle');
+      var content = (input ? input.value : '').trim();
+      if (!content) { showToast('请先输入内容'); return; }
+
+      try {
+        var records = safeJSON(localStorage.getItem('pobi_records'), []);
+        var newId = records.length > 0 ? Math.max.apply(null, records.map(function(r) { return r.id; })) + 1 : 1;
+        records.unshift({
+          id: newId,
+          content: content,
+          category: '全部',
+          createdAt: new Date().toISOString(),
+        });
+        localStorage.setItem('pobi_records', JSON.stringify(records));
+        if (input) input.value = '';
+        if (textarea) { textarea.value = ''; textarea.classList.remove('visible'); }
+        if (resizeHandle) resizeHandle.classList.remove('visible');
+        showToast('保存成功');
+      } catch(e) {
+        console.error('[保存] 失败:', e);
+        showToast('保存失败: ' + e.message);
+      }
+    });
+
+    // ── 其他按钮（依赖 electronAPI）──
+    if (!api) {
+      console.error('[破壁视界] ⚠️ electronAPI 未加载！所有面板功能不可用');
+      ensure('btn-close', function() { showToast('API 未就绪，请重启应用'); });
+      ensure('btn-view', function() { showToast('API 未就绪，请重启应用'); });
+      ensure('btn-settings', function() { showToast('API 未就绪，请重启应用'); });
+      ensure('btn-focus', function() { showToast('API 未就绪，请重启应用'); });
+      ensure('btn-mic', function() { showToast('API 未就绪，请重启应用'); });
+    } else {
+      ensure('btn-close', function() { api.closeWindow(); });
+      ensure('btn-view', function() { api.openPanel('记录面板'); });
+      ensure('btn-settings', function() { api.openPanel('设置页'); });
+      // 专注按钮：在侧面板打开完整计时器
+      ensure('btn-focus', function() {
+        if (api.openPanel) api.openPanel('计时器');
+      });
+      // ── 麦克风按钮：录音 → Windows 系统语音识别 → 文字 ──
+      var micStream = null;
+      var audioCtx = null;
+      var scriptProc = null;
+      var pcmBuffers = [];
+      var pcmSampleRate = 16000;
+      var isCapturing = false;
+      var micBtn = document.getElementById('btn-mic');
+
+      function buildWavBlob() {
+        var totalLen = 0;
+        pcmBuffers.forEach(function(b) { totalLen += b.length; });
+        var pcm = new Int16Array(totalLen);
+        var off = 0;
+        pcmBuffers.forEach(function(b) {
+          pcm.set(b, off);
+          off += b.length;
+        });
+        var dataLen = pcm.length * 2;
+        var buf = new ArrayBuffer(44 + dataLen);
+        var v = new DataView(buf);
+        function ws(offset, str) {
+          for (var i = 0; i < str.length; i++) v.setUint8(offset + i, str.charCodeAt(i));
+        }
+        ws(0, 'RIFF');
+        v.setUint32(4, 36 + dataLen, true);
+        ws(8, 'WAVE');
+        ws(12, 'fmt ');
+        v.setUint32(16, 16, true);
+        v.setUint16(20, 1, true);
+        v.setUint16(22, 1, true);
+        v.setUint32(24, pcmSampleRate, true);
+        v.setUint32(28, pcmSampleRate * 2, true);
+        v.setUint16(32, 2, true);
+        v.setUint16(34, 16, true);
+        ws(36, 'data');
+        v.setUint32(40, dataLen, true);
+        for (var i = 0; i < pcm.length; i++) {
+          v.setInt16(44 + i * 2, pcm[i], true);
+        }
+        return new Blob([buf], { type: 'audio/wav' });
+      }
+
+      function stopCapture() {
+        isCapturing = false;
+        if (scriptProc) { scriptProc.disconnect(); scriptProc = null; }
+        if (audioCtx) { audioCtx.close(); audioCtx = null; }
+        if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
+      }
+
+      function handleTranscribeResult(result, api) {
+        if (result.success && result.text) {
+          var inp = document.getElementById('inputField');
+          var ta = document.getElementById('expandedTextarea');
+          if (inp) inp.value = result.text;
+          if (ta) {
+            ta.value = result.text;
+            ta.classList.add('visible');
+            if (api.expandFloat) api.expandFloat();
+            if (typeof autoGrowTextarea === 'function') autoGrowTextarea();
+          }
+          showToast('识别完成 ✓');
+        } else {
+          showToast('识别失败: ' + (result.error || '无结果'));
+        }
+      }
+
+      ensure('btn-mic', function() {
+        if (isCapturing) {
+          // 停止录音并转文字
+          stopCapture();
+          if (micBtn) micBtn.classList.remove('recording');
+          showToast('正在识别…');
+
+          if (pcmBuffers.length === 0) {
+            showToast('未捕获到音频');
+            return;
+          }
+          var blob = buildWavBlob();
+          var reader = new FileReader();
+          reader.onload = function() {
+            var base64 = reader.result.split(',')[1];
+            var api = window.electronAPI;
+            if (!api) {
+              showToast('API 未就绪');
+              return;
+            }
+
+            var config = PoBiUtils.getAIConfig();
+            // 优先用 Whisper API
+            if (api.transcribeWhisper && config.sttUrl && config.sttKey) {
+              showToast('正在 Whisper 识别…');
+              api.transcribeWhisper(base64, config.sttUrl, config.sttKey, config.sttModel || 'whisper-1').then(function(result) {
+                handleTranscribeResult(result, api);
+              });
+            } else if (api.transcribeWav) {
+              // 回退 Windows 系统识别
+              showToast('正在系统识别…');
+              api.transcribeWav(base64).then(function(result) {
+                handleTranscribeResult(result, api);
+              });
+            } else {
+              showToast('未配置语音识别，请在设置中填写 STT API');
+            }
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+
+        // 开始录音
+        pcmBuffers = [];
+        if (micBtn) micBtn.classList.add('recording');
+        isCapturing = true;
+        showToast('正在听…');
+
+        navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream) {
+          micStream = stream;
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+          pcmSampleRate = audioCtx.sampleRate;
+          var source = audioCtx.createMediaStreamSource(stream);
+          scriptProc = audioCtx.createScriptProcessor(4096, 1, 1);
+          scriptProc.onaudioprocess = function(e) {
+            if (!isCapturing) return;
+            var input = e.inputBuffer.getChannelData(0);
+            var pcmData = new Int16Array(input.length);
+            for (var i = 0; i < input.length; i++) {
+              var s = Math.max(-1, Math.min(1, input[i]));
+              pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            pcmBuffers.push(pcmData);
+          };
+          source.connect(scriptProc);
+          scriptProc.connect(audioCtx.destination);
+        }).catch(function(err) {
+          stopCapture();
+          if (micBtn) micBtn.classList.remove('recording');
+          if (err.name === 'NotAllowedError') {
+            showToast('麦克风权限被拒绝');
+          } else if (err.name === 'NotFoundError') {
+            showToast('未检测到麦克风设备');
+          } else {
+            showToast('麦克风错误: ' + (err.message || err.name));
+          }
+        });
+      });
+    }
+
+    console.log('[破壁视界] 按钮守护已启动, electronAPI=' + (api ? '就绪' : '缺失'));
+  })();
+  </script>
+
+</body>
+</html>

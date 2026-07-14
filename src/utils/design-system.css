@@ -1,0 +1,273 @@
+﻿/* ============================================================
+   破壁视界 — 设计系统 (Design System)
+   色彩、动效、毛玻璃、深色模式
+   ============================================================ */
+
+/* ── CSS 变量 (Light Mode) ────────────────────────────── */
+:root {
+  /* 主色 */
+  --color-bg:           #F4F5F7;
+  --color-surface:      rgba(255,255,255,0.82);
+  --color-surface-solid:#FFFFFF;
+  --color-border:       rgba(0,0,0,0.06);
+
+  /* 品牌色 */
+  --color-primary:      #1A1D27;
+  --color-accent-orange:#F5A623;
+  --color-accent-purple:#7C5CFC;
+  --color-accent-blue:  #4A7CF7;
+  --color-accent-green: #34C759;
+
+  /* 文字 */
+  --color-text:         #1A1D27;
+  --color-text-secondary: rgba(0,0,0,0.5);
+  --color-text-tertiary:  rgba(0,0,0,0.35);
+
+  /* 毛玻璃 */
+  --glass-bg:           rgba(255,255,255,0.72);
+  --glass-bg-strong:    rgba(255,255,255,0.88);
+  --glass-border:       rgba(255,255,255,0.3);
+  --glass-shadow:       0 2px 20px rgba(0,0,0,0.06);
+  --glass-shadow-hover: 0 4px 28px rgba(0,0,0,0.10);
+
+  /* 卡片 */
+  --card-radius:        12px;
+  --card-radius-lg:     16px;
+  --card-shadow:        0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
+
+  /* 动效 */
+  --ease-spring:        cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth:        cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce:        cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  --duration-fast:      150ms;
+  --duration-normal:    250ms;
+  --duration-slow:      400ms;
+}
+
+/* ── Dark Mode ─────────────────────────────────────────── */
+[data-theme="dark"] {
+  --color-bg:           #0D0E12;
+  --color-surface:      rgba(30,32,38,0.85);
+  --color-surface-solid:#1A1D24;
+  --color-border:       rgba(255,255,255,0.06);
+
+  --color-text:         #E8E9ED;
+  --color-text-secondary: rgba(255,255,255,0.5);
+  --color-text-tertiary:  rgba(255,255,255,0.3);
+
+  --glass-bg:           rgba(26,29,36,0.78);
+  --glass-bg-strong:    rgba(26,29,36,0.92);
+  --glass-border:       rgba(255,255,255,0.08);
+  --glass-shadow:       0 2px 20px rgba(0,0,0,0.3);
+  --glass-shadow-hover: 0 4px 28px rgba(0,0,0,0.4);
+
+  --card-shadow:        0 1px 3px rgba(0,0,0,0.2), 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* ── 毛玻璃基类 ─────────────────────────────────────────── */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+.glass-strong {
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(24px) saturate(1.3);
+  -webkit-backdrop-filter: blur(24px) saturate(1.3);
+  border: 1px solid var(--glass-border);
+}
+
+/* ── 卡片 ───────────────────────────────────────────────── */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  transition: transform var(--duration-normal) var(--ease-smooth),
+              box-shadow var(--duration-normal) var(--ease-smooth);
+}
+.card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 6px 20px rgba(0,0,0,0.06);
+}
+
+/* ── 按钮 ───────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-fast) var(--ease-smooth);
+  user-select: none;
+}
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: #2D3039;
+  transform: scale(1.02);
+}
+.btn-primary:active {
+  transform: scale(0.97);
+}
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+.btn-ghost:hover {
+  background: rgba(0,0,0,0.05);
+  color: var(--color-text);
+}
+
+/* ── 输入框 ─────────────────────────────────────────────── */
+.input {
+  background: rgba(0,0,0,0.03);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--color-text);
+  font-family: inherit;
+  outline: none;
+  transition: all var(--duration-fast) var(--ease-smooth);
+}
+.input:hover {
+  background: rgba(0,0,0,0.05);
+}
+.input:focus {
+  border-color: var(--color-accent-purple);
+  background: var(--color-surface-solid);
+}
+[data-theme="dark"] .input {
+  background: rgba(255,255,255,0.06);
+}
+[data-theme="dark"] .input:hover {
+  background: rgba(255,255,255,0.08);
+}
+[data-theme="dark"] .input:focus {
+  background: var(--color-surface-solid);
+}
+
+/* ── 滚动条 ─────────────────────────────────────────────── */
+.scrollbar::-webkit-scrollbar { width: 4px; }
+.scrollbar::-webkit-scrollbar-track { background: transparent; }
+.scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.1);
+  border-radius: 2px;
+}
+[data-theme="dark"] .scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.15);
+}
+
+/* ── 渐变色文本 ─────────────────────────────────────────── */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-accent-purple), var(--color-accent-orange));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── 渐变色边框 ─────────────────────────────────────────── */
+.border-gradient {
+  position: relative;
+}
+.border-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, var(--color-accent-purple), var(--color-accent-orange));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── BG 光晕 (用于 AI 状态等) ──────────────────────────── */
+.glow-orange {
+  box-shadow: 0 0 20px rgba(245,166,35,0.15), 0 0 60px rgba(245,166,35,0.05);
+}
+.glow-purple {
+  box-shadow: 0 0 20px rgba(124,92,252,0.15), 0 0 60px rgba(124,92,252,0.05);
+}
+
+/* ── 弹性入场动画 ─────────────────────────────────────── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeSlideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+
+.anim-fade-up  { animation: fadeSlideUp var(--duration-slow) var(--ease-spring) both; }
+.anim-fade-down{ animation: fadeSlideDown var(--duration-normal) var(--ease-smooth) both; }
+.anim-scale-in { animation: scaleIn var(--duration-normal) var(--ease-spring) both; }
+
+/* stagger 延迟辅助 */
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 60ms; }
+.stagger > *:nth-child(3) { animation-delay: 120ms; }
+.stagger > *:nth-child(4) { animation-delay: 180ms; }
+.stagger > *:nth-child(5) { animation-delay: 240ms; }
+.stagger > *:nth-child(6) { animation-delay: 300ms; }
+.stagger > *:nth-child(7) { animation-delay: 360ms; }
+.stagger > *:nth-child(8) { animation-delay: 420ms; }
+
+/* ── 全局按钮光标（pointer 更符合点击操作的预期）──── */
+button, .icon-btn, .action-btn, .btn, .preset-btn,
+.nav-tab, .category-label, .card-link, .card-action,
+.record-card, .embedded-card, .embedded-item, .fab-btn,
+.header-back, .header-close-btn, .modal-close, .modal-back,
+.nav-back, .nav-spark, .add-category-fixed, .ctx-item,
+input[type="button"], input[type="submit"] {
+  cursor: pointer !important;
+}
+button:active, .icon-btn:active, .action-btn:active {
+  cursor: pointer !important;
+}
+
+/* ── 主题切换过渡 ─────────────────────────────────────── */
+/* 主题切换过渡仅应用于根元素，避免全局 * 选择器的性能问题 */
+html {
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* ── Toast ──────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13px;
+  padding: 10px 24px;
+  border-radius: 10px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all var(--duration-normal) var(--ease-spring);
+  z-index: 99999;
+}
+.toast.visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

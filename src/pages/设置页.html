@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设置 - 破壁视界</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      margin: 0;
+    }
+
+    /* 火花 canvas */
+    #spark-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ================================================================
+       页面容器
+       ================================================================ */
+    .page-container {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      overflow: auto;
+    }
+
+    /* ================================================================
+       Header
+       ================================================================ */
+    .page-header {
+      display: flex;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid #F0F0F0;
+      -webkit-app-region: drag;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .header-back {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      transition: color 0.15s ease;
+      user-select: none;
+    }
+
+    .header-back:hover {
+      color: #1A1D27;
+    }
+
+    .header-close-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+      color: rgba(0,0,0,0.4); font-size: 14px; transition: all 0.15s ease;
+      user-select: none; flex-shrink: 0;
+      -webkit-app-region: no-drag;
+    }
+    .header-close-btn:hover { color: #1A1D27; background: rgba(0,0,0,0.06); }
+
+    .header-title {
+      flex: 1;
+      text-align: center;
+      font-size: 16px;
+      font-weight: 600;
+      color: #1A1D27;
+      margin-right: 28px; /* 抵消返回按钮宽度，居中 */
+    }
+
+    /* ================================================================
+       内容区
+       ================================================================ */
+    .page-body {
+      flex: 1;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    /* 隐藏滚动条 */
+    .page-body::-webkit-scrollbar {
+      width: 3px;
+    }
+    .page-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .page-body::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+    }
+    .page-body {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+
+    /* ================================================================
+       区块标题
+       ================================================================ */
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1A1D27;
+      letter-spacing: 0.3px;
+    }
+
+    /* ================================================================
+       输入组
+       ================================================================ */
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-label {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.5);
+      letter-spacing: 0.2px;
+    }
+
+    .input-field {
+      width: 100%;
+      height: 40px;
+      background: #F8F9FA;
+      border: 1px solid #E8E8E8;
+      border-radius: 8px;
+      padding: 0 12px;
+      font-size: 13px;
+      color: #1A1D27;
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+      outline: none;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .input-field:hover {
+      background: #F3F4F5;
+    }
+
+    .input-field:focus {
+      border-color: #1A1D27;
+      background: #FFFFFF;
+    }
+
+    .input-field::placeholder {
+      color: #B3B3B3;
+    }
+
+    /* ================================================================
+       保存按钮
+       ================================================================ */
+    .save-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 40px;
+      background: #1A1D27;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s ease;
+      letter-spacing: 0.3px;
+      user-select: none;
+    }
+
+    .save-btn:hover {
+      background: #2D3039;
+    }
+
+    /* ================================================================
+       保存提示
+       ================================================================ */
+    .save-feedback {
+      text-align: center;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.4);
+      min-height: 18px;
+      transition: opacity 0.3s ease;
+      opacity: 0;
+    }
+
+    .save-feedback.visible {
+      opacity: 1;
+    }
+
+    /* ================================================================
+       分割线
+       ================================================================ */
+    .divider {
+      height: 1px;
+      background: #F0F0F0;
+      margin: 4px 0;
+    }
+
+    /* ================================================================
+       关于区域
+       ================================================================ */
+    .about-section {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .about-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1A1D27;
+      margin-bottom: 4px;
+    }
+
+    .about-line {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.4);
+      line-height: 1.5;
+    }
+
+    /* 测试 API 按钮行 */
+    .action-btn-row {
+      margin-top: 4px;
+    }
+
+    .action-btn-row .save-btn {
+      width: 100%;
+    }
+
+    .test-result {
+      font-size: 12px;
+      text-align: center;
+      min-height: 18px;
+      margin-top: 2px;
+      transition: all 0.3s ease;
+    }
+    .test-result.success { color: #34C759; }
+    .test-result.fail { color: #E74C3C; }
+
+    /* 导出按钮 */
+    .export-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 8px; padding: 8px 16px;
+      background: rgba(0,0,0,0.04); border: none; border-radius: 8px;
+      font-size: 13px; color: rgba(0,0,0,0.6); cursor: pointer;
+      font-family: inherit; transition: all 0.15s ease;
+    }
+    .export-btn:hover { background: rgba(0,0,0,0.08); color: #1A1D27; }
+
+    .export-result {
+      font-size: 12px; text-align: center; min-height: 18px;
+      margin-top: 4px; transition: all 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 火花粒子画布 -->
+  <canvas id="spark-canvas"></canvas>
+
+  <!-- 页面容器 -->
+  <div class="page-container">
+
+    <!-- Header -->
+    <div class="page-header">
+      <span class="header-back" id="headerBack">← 返回</span>
+      <span class="header-title">设置</span>
+      <span class="header-close-btn" id="headerCloseBtn">✕</span>
+    </div>
+
+    <!-- Body -->
+    <div class="page-body">
+
+      <!-- AI 接口配置 -->
+      <span class="section-title">AI 接口配置</span>
+
+      <div class="input-group">
+        <span class="input-label">API 地址</span>
+        <input class="input-field" id="apiUrl" type="text" placeholder="https://api.deepseek.com/v1" spellcheck="false">
+      </div>
+
+      <div class="input-group">
+        <span class="input-label">API Key</span>
+        <input class="input-field" id="apiKey" type="password" placeholder="sk-..." spellcheck="false">
+      </div>
+
+      <div class="input-group">
+        <span class="input-label">模型名称</span>
+        <select class="input-field" id="modelName" style="appearance:none;-webkit-appearance:none;cursor:pointer;background-image:url('data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23999%22 stroke-width=%222%22><polyline points=%226 9 12 15 18 9%22/></svg>');background-repeat:no-repeat;background-position:right 12px center;padding-right:36px;">
+          <option value="deepseek-chat">deepseek-chat</option>
+          <option value="deepseek-reasoner">deepseek-reasoner</option>
+          <option value="gpt-4o">gpt-4o</option>
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+          <option value="claude-3.5-sonnet">claude-3.5-sonnet</option>
+          <option value="claude-opus-4">claude-opus-4</option>
+        </select>
+      </div>
+
+      <!-- 语音识别 API -->
+      <div style="height:1px;background:rgba(0,0,0,0.06);margin:4px 0;"></div>
+      <div class="input-group">
+        <span class="input-label">语音识别 API（Whisper 兼容）</span>
+        <input class="input-field" id="sttUrl" type="text" placeholder="https://api.siliconflow.cn/v1/audio/transcriptions" spellcheck="false">
+      </div>
+      <div class="input-group">
+        <span class="input-label">语音识别 Key（可复用上方 Key）</span>
+        <input class="input-field" id="sttKey" type="password" placeholder="留空则使用上方 API Key" spellcheck="false">
+      </div>
+
+      <!-- 保存按钮 -->
+      <button class="save-btn" id="saveBtn">保存设置</button>
+
+      <!-- 保存反馈 -->
+      <div class="save-feedback" id="saveFeedback">已保存</div>
+      <div class="action-btn-row">
+        <button class="save-btn" id="testApiBtn" style="background:#555">测试 API 连接</button>
+      </div>
+      <div class="test-result" id="testResult"></div>
+
+      <!-- 分割线 -->
+      <div class="divider"></div>
+
+      <!-- 关于 -->
+      <div class="about-section">
+        <span class="about-title">关于</span>
+        <span class="about-line">破壁视界 v1.0</span>
+        <span class="about-line">数据存储在本地，不上传服务器</span>
+        <span class="about-line">所有 AI 功能需自行配置 API</span>
+        <button class="export-btn" id="exportBtn">📥 导出全部数据</button>
+        <div class="export-result" id="exportResult"></div>
+      </div>
+
+    </div>
+  </div>
+
+  
+<script src="../utils/shared.js"></script>
+<script>ThemeManager.init();</script>
+<script>
+    // ================================================================
+    // DOM 引用
+    // ================================================================
+    const headerBack   = document.getElementById('headerBack');
+    const apiUrlInput  = document.getElementById('apiUrl');
+    const apiKeyInput  = document.getElementById('apiKey');
+    const modelInput   = document.getElementById('modelName');
+    const sttUrlInput  = document.getElementById('sttUrl');
+    const sttKeyInput  = document.getElementById('sttKey');
+    const saveBtn      = document.getElementById('saveBtn');
+    const saveFeedback = document.getElementById('saveFeedback');
+    const testApiBtn   = document.getElementById('testApiBtn');
+    const testResult   = document.getElementById('testResult');
+    const exportBtn    = document.getElementById('exportBtn');
+    const exportResult = document.getElementById('exportResult');
+
+    // ================================================================
+    // 默认配置
+    // ================================================================
+    const defaults = {
+      apiUrl:    'https://api.deepseek.com/v1',
+      apiKey:    '',
+      modelName: 'deepseek-chat',
+    };
+
+    // ================================================================
+    // 存储层（localStorage）
+    // ================================================================
+    const storage = {
+      async get(keys) {
+        const result = {};
+        for (const key of keys) {
+          const raw = localStorage.getItem('pobi_' + key);
+          result[key] = raw !== null ? raw : undefined;
+        }
+        return result;
+      },
+
+      async set(obj) {
+        for (const [key, value] of Object.entries(obj)) {
+          localStorage.setItem('pobi_' + key, value);
+        }
+      },
+    };
+
+    // ================================================================
+    // 加载配置
+    // ================================================================
+    async function loadConfig() {
+      const data = await storage.get(['apiUrl', 'apiKey', 'modelName', 'sttUrl', 'sttKey', 'sttModel']);
+      apiUrlInput.value  = data.apiUrl    || defaults.apiUrl;
+      apiKeyInput.value  = data.apiKey    || defaults.apiKey;
+      modelInput.value   = data.modelName || defaults.modelName;
+      sttUrlInput.value  = data.sttUrl    || '';
+      sttKeyInput.value  = data.sttKey    || '';
+    }
+
+    // ================================================================
+    // 保存配置
+    // ================================================================
+    async function saveConfig() {
+      var sttKey = sttKeyInput.value.trim();
+      if (!sttKey) sttKey = apiKeyInput.value.trim(); // 默认复用 AI Key
+      const config = {
+        apiUrl:    apiUrlInput.value.trim()  || defaults.apiUrl,
+        apiKey:    apiKeyInput.value.trim(),
+        modelName: modelInput.value.trim()   || defaults.modelName,
+        sttUrl:    sttUrlInput.value.trim(),
+        sttKey:    sttKey,
+        sttModel:  'whisper-1',
+      };
+
+      await storage.set(config);
+
+      // 反馈
+      saveFeedback.classList.add('visible');
+      setTimeout(() => {
+        saveFeedback.classList.remove('visible');
+      }, 2000);
+    }
+
+    // ================================================================
+    // 事件
+    // ================================================================
+    // 返回按钮已由文末守护脚本统一管理
+    saveBtn.addEventListener('click', () => {
+      saveConfig();
+    });
+
+    // 回车保存
+    [apiUrlInput, apiKeyInput, modelInput].forEach(input => {
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') saveConfig();
+      });
+    });
+
+    // ================================================================
+    // 测试 API 连接
+    // ================================================================
+    testApiBtn.addEventListener('click', async () => {
+      const apiUrl = apiUrlInput.value.trim() || defaults.apiUrl;
+      const apiKey = apiKeyInput.value.trim();
+      if (!apiKey) {
+        testResult.textContent = '⚠️ 请先填写 API Key';
+        testResult.className = 'test-result fail';
+        return;
+      }
+      testResult.textContent = '⏳ 测试中...';
+      testResult.className = 'test-result';
+      testApiBtn.disabled = true;
+      testApiBtn.style.opacity = '0.6';
+      try {
+        const url = apiUrl.replace(/\/+$/, '') + '/chat/completions';
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + apiKey,
+          },
+          body: JSON.stringify({
+            model: modelInput.value.trim() || defaults.modelName,
+            messages: [{ role: 'user', content: 'Hi' }],
+            max_tokens: 5,
+          }),
+        });
+        if (resp.ok) {
+          testResult.textContent = '✅ API 连接成功！';
+          testResult.className = 'test-result success';
+        } else {
+          const errText = await resp.text().catch(() => '');
+          testResult.textContent = '❌ API 返回 ' + resp.status + ': ' + (errText.slice(0, 60) || '连接失败');
+          testResult.className = 'test-result fail';
+        }
+      } catch (err) {
+        testResult.textContent = '❌ 连接失败: ' + err.message;
+        testResult.className = 'test-result fail';
+      } finally {
+        testApiBtn.disabled = false;
+        testApiBtn.style.opacity = '1';
+      }
+    });
+
+    // ================================================================
+    // 导出数据
+    // ================================================================
+    exportBtn.addEventListener('click', () => {
+      try {
+        const records = safeJSON(localStorage.getItem('pobi_records'), []);
+        const apiUrl = localStorage.getItem('pobi_apiUrl') || '';
+        const modelName = localStorage.getItem('pobi_modelName') || '';
+        const theme = localStorage.getItem('pobi_theme') || 'light';
+        const exportData = {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          appName: '破壁视界',
+          records: records,
+          settings: { apiUrl, modelName, theme },
+        };
+        window.electronAPI.saveExportFile(exportData);
+        window.electronAPI.onExportResultOnce((result) => {
+          if (result.success) {
+            exportResult.textContent = '✅ 已导出到: ' + result.path;
+            exportResult.style.color = '#34C759';
+          } else if (result.error === 'cancelled') {
+            exportResult.textContent = '';
+          } else {
+            exportResult.textContent = '❌ 导出失败: ' + result.error;
+            exportResult.style.color = '#E74C3C';
+          }
+        });
+      } catch (err) {
+        exportResult.textContent = '❌ 导出失败: ' + err.message;
+        exportResult.style.color = '#E74C3C';
+      }
+    });
+
+    // ================================================================
+    // 关闭面板
+    // ================================================================
+    // headerClose removed — use headerBack or close via side-panel controls
+
+    // ================================================================
+    // ClickSpark — 点击火花
+    // ================================================================
+
+    new ClickSpark({
+      sparkColor:  '#1A1D27',
+      sparkSize:   10,
+      sparkRadius: 15,
+      sparkCount:  8,
+      duration:    400,
+      easing:      'ease-out',
+      extraScale:  1.0,
+    });
+
+    // ================================================================
+    // 初始化
+    // ================================================================
+    loadConfig();
+
+    console.log('设置页已就绪');
+  </script>
+
+  <!-- 按钮守护：确保返回和关闭按钮始终可用 -->
+  <script>
+  (function() {
+    var api = window.electronAPI;
+
+    // 返回按钮 — 回到记录面板
+    var backBtn = document.getElementById('headerBack');
+    if (backBtn) {
+      backBtn.style.cursor = 'default';
+      backBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (api && api.openPanel) {
+          api.openPanel('记录面板');
+          console.log('[设置页] 返回→记录面板');
+        }
+      });
+    }
+
+    // 关闭按钮 — 关闭侧面板
+    var closeBtn = document.getElementById('headerCloseBtn');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (api && api.closePanel) {
+          api.closePanel();
+          console.log('[设置页] 关闭面板');
+        }
+      });
+    }
+
+    console.log('[设置页] 守护已启动, back=' + !!backBtn + ' close=' + !!closeBtn + ' api=' + !!api);
+  })();
+  </script>
+
+</body>
+</html>

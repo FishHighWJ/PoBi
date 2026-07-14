@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>灵感火花 - 破壁视界</title>
+  <link rel="stylesheet" href="../utils/design-system.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--color-bg);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* ================================================================
+       遮罩层
+       ================================================================ */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9998;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.dismissing {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ================================================================
+       弹窗卡片
+       ================================================================ */
+    .modal-card {
+      width: 420px;
+      min-width: 340px;
+      min-height: 320px;
+      background: var(--color-surface-solid);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 16px;
+      box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.04),
+        0 8px 32px rgba(0, 0, 0, 0.08);
+      display: flex;
+      overflow: auto;
+      resize: both;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 火花 canvas */
+    #spark-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ================================================================
+       Header
+       ================================================================ */
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 0;
+      -webkit-app-region: drag;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .spark-icon-svg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--color-primary);
+      letter-spacing: 0.3px;
+    }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-tertiary);
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+    }
+
+    .modal-close:hover {
+      color: var(--color-primary);
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    /* ================================================================
+       Body
+       ================================================================ */
+    .modal-body {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ================================================================
+       Loading 状态
+       ================================================================ */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .loading-state.hidden {
+      display: none;
+    }
+
+    .loading-text {
+      font-size: 14px;
+      color: #555;
+      text-align: left;
+      letter-spacing: 0.2px;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 2px;
+      background: #EEEEEE;
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 35%;
+      background: var(--color-primary);
+      border-radius: 1px;
+      animation: progress-slide 1.6s ease-in-out infinite;
+    }
+
+    @keyframes progress-slide {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(380%); }
+    }
+
+    /* ================================================================
+       Complete 状态
+       ================================================================ */
+    .complete-state {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      flex: 1;
+    }
+
+    .complete-state.hidden {
+      display: none;
+    }
+
+    .insight-block {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .insight-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .insight-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--color-primary);
+      letter-spacing: 0.3px;
+    }
+
+    .insight-content {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.7;
+      text-align: left;
+    }
+
+    .insight-divider {
+      height: 1px;
+      background: #EEEEEE;
+      margin: 2px 0;
+    }
+
+    .insight-source {
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+      text-align: left;
+    }
+
+    /* ================================================================
+       Empty 状态
+       ================================================================ */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+      justify-content: center;
+      padding: 10px 0;
+    }
+
+    .empty-state.hidden {
+      display: none;
+    }
+
+    .empty-text {
+      font-size: 14px;
+      color: #555;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    /* ================================================================
+       Error 状态
+       ================================================================ */
+    .error-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .error-state.hidden {
+      display: none;
+    }
+
+    .error-text {
+      font-size: 14px;
+      color: #555;
+      text-align: center;
+    }
+
+    /* ================================================================
+       按钮
+       ================================================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: none;
+      font-family: inherit;
+      letter-spacing: 0.2px;
+      user-select: none;
+      text-decoration: none;
+      align-self: flex-start;
+    }
+
+    .btn-primary {
+      background: var(--color-primary);
+      color: var(--color-surface-solid);
+    }
+
+    .btn-primary:hover {
+      background: #2D3039;
+    }
+
+    .btn-secondary {
+      background: var(--color-border);
+      color: var(--color-primary);
+    }
+
+    .btn-secondary:hover {
+      background: #E0E0E0;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: #555;
+      padding: 10px 16px;
+    }
+
+    .btn-ghost:hover {
+      background: var(--color-border);
+      color: var(--color-primary);
+    }
+
+  </style>
+</head>
+<body>
+
+  <!-- 火花粒子画布 -->
+  <canvas id="spark-canvas"></canvas>
+
+  <!-- 遮罩层 -->
+  <div class="modal-overlay" id="modalOverlay">
+
+    <!-- 弹窗卡片 -->
+    <div class="modal-card" id="modalCard">
+
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="header-left">
+          <!-- SVG 闪电图标 -->
+          <span class="spark-icon-svg">
+            <svg viewBox="0 0 24 24" width="22" height="22" stroke="#1A1D27" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </span>
+          <span class="modal-title">灵感火花</span>
+        </div>
+        <!-- SVG 关闭图标 -->
+        <span class="modal-close" id="modalClose">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </span>
+      </div>
+
+      <!-- Body -->
+      <div class="modal-body" id="modalBody">
+
+        <!-- Loading 状态 -->
+        <div class="loading-state" id="loadingState">
+          <p class="loading-text">正在分析你的想法...</p>
+          <div class="progress-track">
+            <div class="progress-fill"></div>
+          </div>
+        </div>
+
+        <!-- Complete 状态 -->
+        <div class="complete-state hidden" id="completeState">
+          <div class="insight-block">
+            <div class="insight-header">
+              <!-- SVG 关联图标 -->
+              <svg viewBox="0 0 24 24" width="16" height="16" stroke="#1A1D27" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              <span class="insight-label">关联洞察</span>
+            </div>
+            <p class="insight-content" id="insightContent">
+              你在「考研」和「AI 技术」话题上停留时间最长，但这两个领域的观点来源较为单一。建议关注以下方向来打破信息茧房：职业教育与技能培训的替代路径、AI 伦理与就业市场的长期趋势、以及跨学科融合带来的新机会。
+            </p>
+            <div class="insight-divider"></div>
+            <span class="insight-source" id="insightSource">基于你最近 3 条想法分析</span>
+          </div>
+          <button class="btn btn-primary" id="actionBtn">
+            查看破壁
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="#FFFFFF" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"/>
+              <polyline points="13 6 19 12 13 18"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Empty 状态 -->
+        <div class="empty-state hidden" id="emptyState">
+          <!-- SVG 文档图标 -->
+          <svg viewBox="0 0 24 24" width="44" height="44" stroke="#999" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+          </svg>
+          <p class="empty-text">还没有想法，先去记录一些吧</p>
+          <button class="btn btn-secondary" id="emptyActionBtn">去记录</button>
+        </div>
+
+        <!-- Error 状态 -->
+        <div class="error-state hidden" id="errorState">
+          <svg viewBox="0 0 24 24" width="36" height="36" stroke="#999" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p class="error-text">分析失败，请稍后重试</p>
+          <button class="btn btn-ghost" id="retryBtn">重新分析</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  
+<script src="../utils/shared.js"></script>
+<script>ThemeManager.init();</script>
+<script>
+    // ================================================================
+    // DOM 引用
+    // ================================================================
+    const modalOverlay    = document.getElementById('modalOverlay');
+    const modalClose      = document.getElementById('modalClose');
+
+    const loadingState    = document.getElementById('loadingState');
+    const completeState   = document.getElementById('completeState');
+    const emptyState      = document.getElementById('emptyState');
+    const errorState      = document.getElementById('errorState');
+
+    const insightContent  = document.getElementById('insightContent');
+    const insightSource   = document.getElementById('insightSource');
+    const actionBtn       = document.getElementById('actionBtn');
+    const emptyActionBtn  = document.getElementById('emptyActionBtn');
+    const retryBtn        = document.getElementById('retryBtn');
+
+    // ================================================================
+    // 状态管理
+    // ================================================================
+    let currentState = 'loading';   // 'loading' | 'complete' | 'empty' | 'error'
+    let loadingTimer = null;
+
+    /** 隐藏所有状态区 */
+    function hideAllStates() {
+      loadingState.classList.add('hidden');
+      completeState.classList.add('hidden');
+      emptyState.classList.add('hidden');
+      errorState.classList.add('hidden');
+    }
+
+    /** 切换到 loading */
+    function showLoading() {
+      hideAllStates();
+      loadingState.classList.remove('hidden');
+      currentState = 'loading';
+    }
+
+    /** 切换到 complete */
+    function showComplete() {
+      hideAllStates();
+      completeState.classList.remove('hidden');
+      currentState = 'complete';
+    }
+
+    /** 切换到 empty */
+    function showEmpty() {
+      hideAllStates();
+      emptyState.classList.remove('hidden');
+      currentState = 'empty';
+    }
+
+    /** 切换到 error */
+    function showError() {
+      hideAllStates();
+      errorState.classList.remove('hidden');
+      currentState = 'error';
+    }
+
+    // ================================================================
+    // 模拟加载流程
+    // ================================================================
+    function startLoadingFlow(delayMs = 2200) {
+      showLoading();
+
+      if (loadingTimer) clearTimeout(loadingTimer);
+
+      loadingTimer = setTimeout(function() {
+        var records = safeJSON(localStorage.getItem("pobi_records"), []);
+        var breakRecords = records.filter(function(r) {
+          return r.category === "破壁记录" || (r.content && r.content.indexOf("破壁") >= 0);
+        });
+        if (breakRecords.length > 0) {
+          var latest = breakRecords[0];
+          var txt = (latest.content || "").slice(0, 120);
+          insightContent.textContent = txt + ((latest.content && latest.content.length > 120) ? "..." : "");
+          var src = "来自破壁记录";
+          if (latest.createdAt) src += " · " + new Date(latest.createdAt).toLocaleString("zh-CN");
+          insightSource.textContent = src;
+          var ab = document.querySelector(".action-btn");
+          if (ab) ab.style.display = "block";
+          showComplete();
+        } else {
+          showEmpty();
+        }
+      }, delayMs);
+    }
+
+    // ================================================================
+    // ClickSpark — 点击火花粒子特效
+    // ================================================================
+
+    // 初始化 ClickSpark（黑白灰色系）
+    new ClickSpark({
+      sparkColor:  '#1A1D27',
+      sparkSize:   10,
+      sparkRadius: 15,
+      sparkCount:  8,
+      duration:    400,
+      easing:      'ease-out',
+      extraScale:  1.0,
+    });
+
+    // ================================================================
+    // 关闭弹窗
+    // ================================================================
+    function closeModal() {
+      if (loadingTimer) clearTimeout(loadingTimer);
+      window.electronAPI.closePanel();
+    }
+
+    function openModal() {
+      modalOverlay.style.display = 'flex';
+    }
+
+    // 关闭按钮
+    modalClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeModal();
+    });
+
+    // 点击遮罩关闭
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) {
+        closeModal();
+      }
+    });
+
+    // ================================================================
+    // 按钮事件
+    // ================================================================
+
+    // "查看破壁" 按钮
+    actionBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.electronAPI.openPanel('破壁结果');
+    });
+
+    // "去记录" 按钮
+    emptyActionBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.electronAPI.closePanel();
+    });
+
+    // "重新分析" 按钮
+    retryBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      startLoadingFlow(1800);
+    });
+
+    // ================================================================
+    // 暴露 API
+    // ================================================================
+    window.PoBiSpark = {
+      /**
+       * 打开弹窗
+       * @param {'auto'|'empty'} mode - 'auto' 默认走加载流程；'empty' 直接显示空状态
+       */
+      open(mode = 'auto') {
+        openModal();
+        if (mode === 'empty') {
+          if (loadingTimer) clearTimeout(loadingTimer);
+          showEmpty();
+        } else {
+          startLoadingFlow(2200);
+        }
+      },
+
+      /** 关闭弹窗 */
+      close: closeModal,
+
+      /** 设置洞察内容（外部可替换文案） */
+      setInsight(content, source) {
+        if (content) insightContent.textContent = content;
+        if (source) insightSource.textContent = source;
+      },
+
+      /** 获取当前状态 */
+      getState() {
+        return currentState;
+      },
+    };
+
+    // ================================================================
+    // 初始化 — 等待 PoBiSpark.open() 显式调用来启动加载
+    // ================================================================
+    // (不再在页面加载时自动启动，避免与 PoBiSpark.open() 冲突)
+
+    // 弹窗拖拽移动
+    (function() {
+      const dlg = document.querySelector('.modal-card');
+      const hdr = document.querySelector('.modal-header');
+      if (!dlg || !hdr) return;
+      dlg.style.position = 'fixed';
+      let d = false, sx, sy, sl, st;
+      hdr.style.cursor = 'grab';
+      hdr.addEventListener('mousedown', (e) => {
+        d = true; sx = e.clientX; sy = e.clientY;
+        const r = dlg.getBoundingClientRect();
+        sl = r.left; st = r.top; dlg.style.transition = 'none';
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (!d) return;
+        dlg.style.left = (sl + e.clientX - sx) + 'px';
+        dlg.style.top  = (st + e.clientY - sy) + 'px';
+      });
+      document.addEventListener('mouseup', () => { d = false; dlg.style.transition = ''; });
+    })();
+
+    console.log('⚡ 灵感火花弹窗已就绪');
+  </script>
+
+</body>
+</html>

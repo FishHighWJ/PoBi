@@ -1,0 +1,2898 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>记录列表 - 破壁视界</title>
+  <style>
+    html {
+      height: 100%;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    /* 火花效果 canvas */
+    #spark-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    .page-container {
+      width: 100%;
+      height: 100%;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .top-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    .nav-back {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      padding: 6px 10px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      -webkit-app-region: no-drag;
+    }
+
+    .nav-back:hover {
+      color: #1A1D27;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .nav-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1A1D27;
+    }
+
+    .nav-spark {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.7);
+      cursor: grab;
+      -webkit-app-region: no-drag;
+      padding: 4px 6px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+    .nav-spark:hover { color: #1A1D27; background: rgba(0,0,0,0.06); }
+
+    /* Tab 导航 */
+    .nav-tabs {
+      display: flex;
+      gap: 4px;
+    }
+
+    .nav-tab {
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      padding: 6px 14px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      user-select: none;
+      -webkit-app-region: no-drag;
+    }
+
+    .nav-tab:hover {
+      color: #1A1D27;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .nav-tab.active {
+      color: #1A1D27;
+      font-weight: 600;
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    /* Tab 内容区 */
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    .tab-content .records-list {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      min-height: 0;
+    }
+
+    .tab-content .records-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    .tab-content .records-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .tab-content .records-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.12);
+      border-radius: 2px;
+    }
+    .tab-content .records-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* 日报/周报/灵感火花内嵌内容 */
+    .embedded-content {
+      flex: 1;
+      padding: 16px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .embedded-content::-webkit-scrollbar {
+      width: 3px;
+    }
+    .embedded-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .embedded-content::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+    }
+
+    .embedded-stat {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1A1D27;
+    }
+
+    .count-up {
+      display: inline-block;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .embedded-sub {
+      font-size: 13px;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    .embedded-card {
+      background: rgba(0, 0, 0, 0.02);
+      border-radius: 8px;
+      padding: 14px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .embedded-card:hover {
+      background: #1A1D27;
+    }
+
+    .embedded-card:hover .embedded-card-label {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .embedded-card:hover .embedded-card-text {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    .embedded-card-label {
+      font-size: 13px;
+      color: rgba(0, 0, 0, 0.6);
+      font-weight: 500;
+      margin-bottom: 6px;
+      transition: color 0.2s ease;
+    }
+
+    .embedded-card-text {
+      font-size: 13px;
+      color: #1A1D27;
+      line-height: 1.6;
+      transition: color 0.2s ease;
+    }
+
+    #sparkCard1 .embedded-card-text {
+      font-size: 14px;
+      line-height: 2;
+      white-space: pre-line;
+    }
+
+    .embedded-item {
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 13px;
+      color: #1A1D27;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 1;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .embedded-item:hover {
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      transform: translateX(4px);
+    }
+
+    /* 灵感火花悬停弹出面板 */
+    .spark-popout {
+      position: fixed;
+      width: 300px;
+      max-height: 60vh;
+      background: #FFFFFF;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(8px);
+      transition: all 0.2s ease;
+      z-index: 10000;
+      overflow-y: auto;
+    }
+
+    .spark-popout.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+    }
+
+    .spark-popout-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #999;
+      margin-bottom: 10px;
+    }
+
+    .spark-popout-text {
+      font-size: 13px;
+      color: #1A1D27;
+      line-height: 1.7;
+    }
+
+    .spark-popout::-webkit-scrollbar {
+      width: 3px;
+    }
+    .spark-popout::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .spark-popout::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+    }
+
+    /* 分类输入弹窗 */
+    .category-input-popup {
+      position: fixed;
+      width: 260px;
+      background: #1A1D27;
+      border-radius: 10px;
+      padding: 16px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-4px);
+      transition: all 0.2s ease;
+      z-index: 10001;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .category-input-popup.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .category-input-label {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 10px;
+    }
+
+    .category-input-field {
+      width: 100%;
+      height: 36px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 6px;
+      padding: 0 10px;
+      font-size: 13px;
+      color: #fff;
+      outline: none;
+      font-family: inherit;
+      margin-bottom: 12px;
+    }
+
+    .category-input-field:focus {
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    .category-input-field::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    .category-input-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .category-input-btn {
+      font-size: 12px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .category-input-btn.cancel {
+      color: rgba(255, 255, 255, 0.5);
+    }
+    .category-input-btn.cancel:hover {
+      color: #fff;
+    }
+
+    .category-input-btn.confirm {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .category-input-btn.confirm:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* 保存反馈 toast */
+    .save-toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: #1A1D27;
+      color: #fff;
+      font-size: 13px;
+      padding: 8px 20px;
+      border-radius: 8px;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+      z-index: 10002;
+      pointer-events: none;
+    }
+
+    .save-toast.visible {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* 分类导航栏 */
+    .category-nav {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 100;
+    }
+
+    /* 可滑动区域的容器 */
+    .category-scroll-wrapper {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: visible;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      position: relative;
+    }
+
+    .category-scroll-wrapper::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* 可滑动的分类区域 */
+    .category-scroll {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 20px;
+      cursor: grab;
+      user-select: none;
+      position: relative;
+    }
+
+    .category-scroll.dragging {
+      cursor: grabbing;
+    }
+
+    /* 固定的添加按钮 */
+    .add-category-fixed {
+      font-size: 13px;
+      color: rgba(0, 0, 0, 0.5);
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      background: rgba(255, 255, 255, 0.9);
+      border-left: 2px solid rgba(0, 0, 0, 0.15);
+      box-shadow: -2px 0 6px rgba(0,0,0,0.03);
+      flex-shrink: 0;
+      margin-left: 4px;
+    }
+
+    .add-category-fixed:hover {
+      color: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.04);
+      border-left-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .category-item {
+      position: relative;
+    }
+
+    .category-label {
+      font-size: 13px;
+      color: rgba(0, 0, 0, 0.7);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+    }
+
+    .category-label:hover {
+      color: #1A1D27;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .category-label.active {
+      color: #1A1D27;
+      background: rgba(0, 0, 0, 0.06);
+    }
+
+    /* 卡片下拉菜单 */
+    .category-card {
+      position: fixed;
+      min-width: 180px;
+      background: #1A1D27;
+      border-radius: 10px;
+      padding: 12px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: all 0.3s ease;
+      z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .category-item:hover .category-card {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .card-link {
+      display: block;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.85);
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .card-link:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .card-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 8px 0;
+    }
+
+    .card-action {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.5);
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: block;
+    }
+
+    .card-action:hover {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .records-list {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+      min-height: 0;
+    }
+
+    .records-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    .records-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .records-list::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 3px;
+    }
+    .records-list::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.25);
+    }
+
+    .record-card {
+      background: rgba(255, 255, 255, 0.6);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 12px;
+      padding: 16px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .record-card:hover {
+      background: rgba(255, 255, 255, 0.8);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      transform: translateX(4px);
+    }
+
+    /* 嵌入日报/周报记录卡片 */
+    .record-item {
+      background: rgba(255,255,255,0.5);
+      border: 1px solid rgba(0,0,0,0.04); border-radius: 8px;
+      padding: 12px; cursor: pointer;
+      transition: all 0.2s ease; margin-bottom: 6px;
+    }
+    .record-item:hover {
+      background: rgba(255,255,255,0.8);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      transform: translateX(3px);
+    }
+    .record-item-content {
+      font-size: 13px; color: #1A1D27; line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden; margin-bottom: 6px;
+    }
+    .record-item-meta {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: rgba(0,0,0,0.35);
+    }
+
+    .record-category {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.4);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* 颜色圆环按钮 */
+    .color-ring {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .color-ring:hover {
+      border-color: rgba(0, 0, 0, 0.4);
+      transform: scale(1.1);
+    }
+
+    /* 颜色选择器弹窗 */
+    .color-picker-popup {
+      position: fixed;
+      min-width: 160px;
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-4px);
+      transition: all 0.2s ease;
+      z-index: 9999;
+    }
+
+    .color-picker-popup.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .color-picker-popup .color-picker-label {
+      font-size: 11px;
+      color: rgba(0, 0, 0, 0.5);
+      margin-bottom: 8px;
+    }
+
+    .color-picker-popup .color-picker-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 4px 0;
+    }
+
+    .color-picker-popup .color-option {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 2px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .color-picker-popup .color-option:hover {
+      transform: scale(1.2);
+      border-color: rgba(0, 0, 0, 0.2);
+    }
+
+    .color-picker-popup .color-option.active {
+      border-color: rgba(0, 0, 0, 0.4);
+      transform: scale(1.1);
+    }
+
+    /* 颜色选项 */
+    .color-option.blue { background: #00C8F0; }
+    .color-option.purple { background: #8B6BFF; }
+    .color-option.red { background: #FF6B6B; }
+    .color-option.orange { background: #FFA94D; }
+    .color-option.green { background: #51CF66; }
+    .color-option.pink { background: #F06595; }
+    .color-option.gray { background: #868E96; }
+    .color-option.default { background: rgba(0, 0, 0, 0.1); }
+
+    .record-content {
+      font-size: 14px;
+      color: #1A1D27;
+      line-height: 1.5;
+      margin-bottom: 12px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .record-divider {
+      height: 16px;
+    }
+
+    .record-ai-content {
+      font-size: 13px;
+      color: #6B7280;
+      font-style: italic;
+      line-height: 1.6;
+      padding-top: 12px;
+      border-top: 1px dashed rgba(0, 0, 0, 0.1);
+    }
+
+    .record-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .record-time {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    .record-actions {
+      display: flex;
+      gap: 16px;
+    }
+
+    .action-btn {
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .action-btn:hover {
+      background: rgba(0, 0, 0, 0.06);
+      color: #1A1D27;
+    }
+
+    .action-btn.primary {
+      color: rgba(0, 0, 0, 0.7);
+    }
+
+    .action-btn.secondary {
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    .bottom-stats {
+      padding: 16px 20px;
+      text-align: center;
+      border-top: 1px solid rgba(0, 0, 0, 0.04);
+      flex-shrink: 0;
+    }
+
+    .stats-text {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    /* 右侧详情面板 — 覆盖在内容区上方 */
+    .detail-panel {
+      position: fixed;
+      top: 40px;
+      right: 40px;
+      width: calc(50% - 30px);
+      max-width: none;
+      min-width: 280px;
+      height: calc(100vh - 100px);
+      background: rgba(255, 255, 255, 0.97);
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 12px;
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      transform: translateX(100%);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease, transform 0.3s ease;
+      overflow-y: auto;
+    }
+
+    .detail-panel.active {
+      transform: translateX(0);
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .detail-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+      flex-shrink: 0;
+    }
+
+    .detail-close {
+      font-size: 18px;
+      color: rgba(0, 0, 0, 0.5);
+      cursor: pointer;
+      transition: color 0.2s ease;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+    }
+
+    .detail-close:hover {
+      color: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .detail-category {
+      font-size: 13px;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    .detail-content {
+      flex: 1;
+      padding: 20px;
+      font-size: 14px;
+      color: #1A1D27;
+      line-height: 1.6;
+      overflow-y: auto;
+    }
+
+    .detail-ai-content {
+      padding: 16px 20px;
+      font-size: 13px;
+      color: #6B7280;
+      font-style: italic;
+      line-height: 1.6;
+      border-top: 1px dashed rgba(0, 0, 0, 0.1);
+      margin-top: 8px;
+    }
+
+    .detail-footer {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(0, 0, 0, 0.04);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .detail-time {
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.5);
+    }
+
+    .detail-actions {
+      display: flex;
+      gap: 16px;
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 2px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    /* 详情面板编辑区 */
+    .detail-edit-area {
+      width: 100%; flex: 1; border: none; background: transparent;
+      font-size: 14px; color: #1A1D27; line-height: 1.6;
+      resize: none; outline: none; font-family: inherit;
+      padding: 20px; overflow-y: auto;
+    }
+
+    /* 润色预览 */
+    .polish-preview {
+      font-size: 13px; color: rgba(0,0,0,0.4); line-height: 1.6;
+      padding: 12px 20px; border-top: 1px solid rgba(0,0,0,0.06);
+      font-style: italic;
+    }
+
+    /* 浮动 + 按钮 */
+    .fab-btn {
+      position: fixed; bottom: 24px; right: 30px;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: #1A1D27; color: #fff; font-size: 22px; font-weight: 300;
+      border: none; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      transition: all 0.2s ease; z-index: 9997; line-height: 1;
+    }
+    .fab-btn:hover { background: #2D3039; transform: scale(1.06); }
+
+    /* 快速记录弹窗 */
+    .quick-record-popup {
+      position: fixed; bottom: 80px; right: 30px;
+      width: 320px; max-height: 70vh; background: #1A1D27; border-radius: 12px; padding: 16px;
+      opacity: 0; visibility: hidden; transform: translateY(8px);
+      transition: all 0.25s ease; z-index: 10001; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      overflow-y: auto;
+    }
+    .quick-record-popup.active { opacity: 1; visibility: visible; transform: translateY(0); }
+
+    .quick-record-input {
+      width: 100%; min-height: 80px; background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px;
+      font-size: 13px; color: #fff; outline: none; resize: vertical;
+      font-family: inherit; margin-bottom: 10px;
+    }
+    .quick-record-input::placeholder { color: rgba(255,255,255,0.3); }
+    .quick-record-input:focus { border-color: rgba(255,255,255,0.3); }
+
+    .quick-record-actions { display: flex; justify-content: space-between; align-items: center; }
+    .quick-record-category {
+      font-size: 12px; color: rgba(255,255,255,0.5); cursor: pointer;
+      padding: 4px 10px; border-radius: 6px; transition: all 0.15s ease;
+    }
+    .quick-record-category:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+    .quick-record-save {
+      font-size: 14px; color: #fff; background: #333;
+      padding: 8px 24px; border-radius: 8px; cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+      font-family: inherit; font-weight: 600; transition: all 0.15s ease;
+    }
+    .quick-record-save:hover { background: #444; border-color: rgba(255,255,255,0.3); }
+    .quick-record-save:active { background: #555; }
+
+    /* 删除确认 */
+    .confirm-popup {
+      position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      width: 280px; background: #1A1D27; border-radius: 12px; padding: 20px;
+      opacity: 0; visibility: hidden; z-index: 10003; transition: all 0.2s ease;
+    }
+    .confirm-popup.active { opacity: 1; visibility: visible; }
+    .confirm-popup-text {
+      font-size: 14px; color: rgba(255,255,255,0.85); margin-bottom: 16px; text-align: center;
+    }
+    .confirm-popup-actions { display: flex; justify-content: center; gap: 12px; }
+    .confirm-popup-btn {
+      font-size: 13px; padding: 8px 24px; border-radius: 6px;
+      cursor: pointer; transition: all 0.15s ease; border: none; font-family: inherit;
+    }
+    .confirm-popup-btn.cancel { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
+    .confirm-popup-btn.cancel:hover { background: rgba(255,255,255,0.18); }
+    .confirm-popup-btn.danger { background: rgba(255,255,255,0.2); color: #fff; }
+    .confirm-popup-btn.danger:hover { background: rgba(255,255,255,0.3); }
+
+    .top-nav { justify-content: flex-start; gap: 8px; }
+    .nav-tabs { flex: 1; justify-content: center; }
+
+    /* ================================================================
+       深色模式样式
+       ================================================================ */
+    [data-theme="dark"] body {
+      background: #1A1D27;
+    }
+
+    [data-theme="dark"] .page-container {
+      background: #1A1D27;
+    }
+
+    [data-theme="dark"] .top-nav {
+      border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .nav-back {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="dark"] .nav-back:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .nav-title {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-theme="dark"] .nav-tab {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="dark"] .nav-tab:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .nav-tab.active {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .nav-spark {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="dark"] .nav-spark:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .category-nav {
+      border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .add-category-fixed {
+      color: rgba(255, 255, 255, 0.5);
+      background: rgba(255, 255, 255, 0.06);
+      border-left-color: rgba(255, 255, 255, 0.15);
+    }
+
+    [data-theme="dark"] .add-category-fixed:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.08);
+      border-left-color: rgba(255, 255, 255, 0.25);
+    }
+
+    [data-theme="dark"] .category-label {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="dark"] .category-label:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .category-label.active {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .record-card {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .record-card:hover {
+      background: rgba(255, 255, 255, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    [data-theme="dark"] .record-category {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    [data-theme="dark"] .record-content {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    [data-theme="dark"] .record-ai-content {
+      color: rgba(255, 255, 255, 0.5);
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .record-time {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    [data-theme="dark"] .action-btn {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="dark"] .action-btn:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .action-btn.primary {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    [data-theme="dark"] .bottom-stats {
+      border-top-color: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .stats-text {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    [data-theme="dark"] .detail-panel {
+      background: rgba(26, 29, 39, 0.97);
+      border-color: rgba(255, 255, 255, 0.1);
+      box-shadow: -4px 0 24px rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="dark"] .detail-header {
+      border-bottom-color: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .detail-close {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="dark"] .detail-close:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .detail-category {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="dark"] .detail-content {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    [data-theme="dark"] .detail-ai-content {
+      color: rgba(255, 255, 255, 0.5);
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .detail-time {
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    [data-theme="dark"] .detail-edit-area {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    [data-theme="dark"] .polish-preview {
+      color: rgba(255, 255, 255, 0.4);
+      border-top-color: rgba(255, 255, 255, 0.06);
+    }
+
+    [data-theme="dark"] .fab-btn {
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-theme="dark"] .fab-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    [data-theme="dark"] .quick-record-input {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-theme="dark"] .quick-record-input::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    [data-theme="dark"] .quick-record-input:focus {
+      border-color: rgba(255, 255, 255, 0.25);
+    }
+
+    [data-theme="dark"] .quick-record-category {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="dark"] .quick-record-category:hover {
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .quick-record-save {
+      background: rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-theme="dark"] .quick-record-save:hover {
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    [data-theme="dark"] .embedded-stat {
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    [data-theme="dark"] .embedded-sub {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="dark"] .embedded-card {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    [data-theme="dark"] .embedded-card:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    [data-theme="dark"] .embedded-card-label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    [data-theme="dark"] .embedded-card-text {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    [data-theme="dark"] .embedded-item {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.08);
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    [data-theme="dark"] .embedded-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .color-picker-popup {
+      background: rgba(26, 29, 39, 0.97);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme="dark"] .color-picker-label {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="spark-canvas"></canvas>
+  <div class="page-container">
+    <div class="top-nav">
+      <span class="nav-back">←</span>
+      <div class="nav-tabs" id="navTabs">
+        <span class="nav-tab active" data-tab="ideas">我的想法</span>
+        <span class="nav-tab" data-tab="spark">灵感火花</span>
+        <span class="nav-tab" data-tab="daily">日报</span>
+        <span class="nav-tab" data-tab="weekly">周报</span>
+      </div>
+      <span class="nav-spark" id="navTheme" title="切换深色/浅色模式" style="font-size:15px;cursor:grab;">🌓</span>
+      <span class="nav-spark" id="navClose" title="关闭面板" style="font-size:15px;margin-left:4px;cursor:grab;">✕</span>
+    </div>
+
+    <!-- ======================== Tab: 我的想法 ======================== -->
+    <div class="tab-content active" id="tab-ideas">
+      <div class="category-nav">
+        <div class="category-scroll-wrapper">
+          <div class="category-scroll">
+            <div class="category-item">
+              <span class="category-label active">全部</span>
+              <div class="category-card">
+                <span class="card-link">查看所有记录</span>
+                <span class="card-link">按时间排序</span>
+                <div class="card-divider"></div>
+                <span class="card-action">导出全部</span>
+              </div>
+            </div>
+            <div class="category-item">
+              <span class="category-label">职业思考</span>
+              <div class="category-card">
+                <span class="card-link">考研视频的观点</span>
+                <span class="card-link">AI技术突破的思考</span>
+                <div class="card-divider"></div>
+                <span class="card-action">查看全部 (2条)</span>
+              </div>
+            </div>
+            <div class="category-item">
+              <span class="category-label">生活感悟</span>
+              <div class="category-card">
+                <span class="card-link">换个城市的想法</span>
+                <span class="card-link">买房观点的纠结</span>
+                <div class="card-divider"></div>
+                <span class="card-action">查看全部 (2条)</span>
+              </div>
+            </div>
+            <div class="category-item"><span class="category-label">人际关系</span><div class="category-card"><span class="card-link">暂无记录</span><div class="card-divider"></div><span class="card-action">添加新记录</span></div></div>
+            <div class="category-item"><span class="category-label">学习方法</span><div class="category-card"><span class="card-link">暂无记录</span><div class="card-divider"></div><span class="card-action">添加新记录</span></div></div>
+            <div class="category-item"><span class="category-label">读书笔记</span><div class="category-card"><span class="card-link">暂无记录</span><div class="card-divider"></div><span class="card-action">添加新记录</span></div></div>
+            <div class="category-item"><span class="category-label">健康运动</span><div class="category-card"><span class="card-link">暂无记录</span><div class="card-divider"></div><span class="card-action">添加新记录</span></div></div>
+            <div class="category-item"><span class="category-label">旅行计划</span><div class="category-card"><span class="card-link">暂无记录</span><div class="card-divider"></div><span class="card-action">添加新记录</span></div></div>
+          </div>
+        </div>
+        <span class="add-category-fixed">+ 新分类</span>
+      </div>
+      <div class="records-list"></div>
+      <div class="bottom-stats"></div>
+    </div>
+
+    <!-- ======================== Tab: 灵感火花 ======================== -->
+    <div class="tab-content" id="tab-spark">
+      <div class="embedded-content" id="sparkContent">
+        <div class="embedded-stat">今日灵感火花</div>
+        <div class="embedded-card" id="sparkCard1">
+          <div class="embedded-card-label">火花 1</div>
+          <div class="embedded-card-text">正在生成灵感...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== Tab: 日报 ======================== -->
+    <div class="tab-content" id="tab-daily">
+      <div class="embedded-content">
+        <div class="embedded-stat" id="dailyEmbedStat">今日已记录 0 条</div>
+        <div class="embedded-sub" id="dailyEmbedTopic">加载中...</div>
+        <div style="height:1px;background:#EEEEEE;margin:4px 0;"></div>
+        <div class="embedded-card">
+          <div class="embedded-card-label" id="dailyEmbedLabel">AI 说：</div>
+          <div class="embedded-card-text" id="dailyEmbedAI">正在分析今日记录...</div>
+        </div>
+        <div style="height:1px;background:#EEEEEE;margin:4px 0;"></div>
+        <div class="embedded-sub" style="margin-bottom:4px;">今日记录</div>
+        <div id="dailyRecordsContainer"></div>
+        <div class="embedded-sub" style="text-align:center;padding:8px;cursor:pointer;" id="openFullDaily">打开完整日报 →</div>
+      </div>
+    </div>
+
+    <!-- ======================== Tab: 周报 ======================== -->
+    <div class="tab-content" id="tab-weekly">
+      <div class="embedded-content">
+        <div class="embedded-stat" id="weeklyEmbedStat">本周记录 0 条</div>
+        <div class="embedded-sub" id="weeklyEmbedTopic">加载中...</div>
+        <div style="height:1px;background:#EEEEEE;margin:4px 0;"></div>
+        <div class="embedded-card">
+          <div class="embedded-card-label" id="weeklyEmbedLabel">AI 洞察：</div>
+          <div class="embedded-card-text" id="weeklyEmbedAI">正在分析本周记录...</div>
+        </div>
+        <div style="height:1px;background:#EEEEEE;margin:4px 0;"></div>
+        <div class="embedded-sub" style="margin-bottom:4px;">本周记录</div>
+        <div id="weeklyRecordsContainer"></div>
+        <div class="embedded-sub" style="text-align:center;padding:8px;cursor:pointer;" id="openFullWeekly">打开完整周报 →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧详情面板 -->
+  <div class="detail-panel">
+    <div class="detail-header">
+      <span class="detail-close">×</span>
+      <span class="detail-category">职业思考</span>
+    </div>
+    <textarea class="detail-edit-area" id="detailEditArea" style="display:none;"></textarea>
+    <div class="detail-content" id="detailContentView"></div>
+    <div class="detail-ai-content" id="detailAiContent" style="display:none;"></div>
+    <div class="polish-preview" id="polishPreview" style="display:none;"></div>
+    <div class="detail-footer">
+      <span class="detail-time">刚刚</span>
+      <div class="detail-actions">
+        <span class="action-btn primary" id="detailEditBtn">编辑</span>
+        <span class="action-btn primary" id="detailPolishBtn">润色</span>
+        <span class="action-btn primary">破壁</span>
+        <span class="action-btn primary" id="detailRecordBtn">记录下来</span>
+        <span class="action-btn secondary" id="detailDeleteBtn">删除</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮动 + 按钮 -->
+  <button class="fab-btn" id="fabBtn" title="快速记录">+</button>
+
+  <!-- 快速记录弹窗 -->
+  <div class="quick-record-popup" id="quickRecordPopup">
+    <textarea class="quick-record-input" id="quickRecordInput" placeholder="记录你的想法..."></textarea>
+    <div class="quick-record-actions">
+      <span class="quick-record-category" id="quickRecordCategory">分类：全部</span>
+      <button class="quick-record-save" id="quickRecordSave">保存</button>
+    </div>
+  </div>
+
+  <!-- 删除确认弹窗 -->
+  <div class="confirm-popup" id="confirmPopup">
+    <div class="confirm-popup-text" id="confirmPopupText">确认删除此记录？</div>
+    <div class="confirm-popup-actions">
+      <button class="confirm-popup-btn cancel" id="confirmCancelBtn">取消</button>
+      <button class="confirm-popup-btn danger" id="confirmDangerBtn">删除</button>
+    </div>
+  </div>
+
+  <!-- 灵感火花悬停弹出面板 -->
+  <div class="spark-popout" id="sparkPopout">
+    <div class="spark-popout-label" id="sparkPopoutLabel">反向观点</div>
+    <div class="spark-popout-text" id="sparkPopoutText"></div>
+  </div>
+
+  <!-- 分类输入弹窗 -->
+  <div class="category-input-popup" id="categoryInputPopup">
+    <div class="category-input-label">新建分类</div>
+    <input class="category-input-field" id="categoryInputField" type="text" placeholder="输入分类名称..." maxlength="12">
+    <div class="category-input-actions">
+      <span class="category-input-btn cancel" id="categoryCancelBtn">取消</span>
+      <span class="category-input-btn confirm" id="categoryConfirmBtn">创建</span>
+    </div>
+  </div>
+
+  <!-- 保存反馈 toast -->
+  <div class="save-toast" id="saveToast">保存成功</div>
+
+  <!-- 颜色选择器弹窗 -->
+  <div class="color-picker-popup">
+    <div class="color-picker-label">选择颜色</div>
+    <div class="color-picker-options">
+      <span class="color-option blue"></span>
+      <span class="color-option purple"></span>
+      <span class="color-option red"></span>
+      <span class="color-option orange"></span>
+      <span class="color-option green"></span>
+      <span class="color-option pink"></span>
+      <span class="color-option gray"></span>
+      <span class="color-option default"></span>
+    </div>
+  </div>
+
+  
+<script src="../utils/shared.js"></script>
+<script>ThemeManager.init();</script>
+<script>
+  try {
+    // 分类导航栏拖拽滚动
+    const categoryScrollWrapper = document.querySelector('.category-scroll-wrapper');
+    const categoryScroll = document.querySelector('.category-scroll');
+    if (!categoryScroll || !categoryScrollWrapper) {
+      console.warn('[记录面板] 分类滚动条元素未找到，跳过拖拽绑定');
+    } else {
+    let isDragging = false;
+    let startX;
+    let scrollLeft;
+
+    categoryScroll.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      categoryScroll.classList.add('dragging');
+      startX = e.pageX - categoryScrollWrapper.offsetLeft;
+      scrollLeft = categoryScrollWrapper.scrollLeft;
+    });
+
+    categoryScroll.addEventListener('mouseleave', () => {
+      isDragging = false;
+      categoryScroll.classList.remove('dragging');
+    });
+
+    categoryScroll.addEventListener('mouseup', () => {
+      isDragging = false;
+      categoryScroll.classList.remove('dragging');
+    });
+
+    categoryScroll.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const x = e.pageX - categoryScrollWrapper.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      categoryScrollWrapper.scrollLeft = scrollLeft - walk;
+    });
+
+    } // end else (categoryScroll exists)
+
+    // 详情面板逻辑
+    const detailPanel   = document.querySelector('.detail-panel');
+    const detailClose   = document.querySelector('.detail-close');
+    const detailCategory = document.querySelector('.detail-category');
+    const detailContent  = document.querySelector('.detail-content');
+    const detailTime     = document.querySelector('.detail-time');
+
+    // 关闭详情面板
+    if (detailClose) {
+    detailClose.addEventListener('click', () => {
+      detailPanel.classList.remove('active');
+    });
+    }
+
+    // 颜色选择器功能
+    const colorPickerPopup = document.querySelector('.color-picker-popup');
+    const colorRings = document.querySelectorAll('.color-ring');
+    const colorOptions = document.querySelectorAll('.color-picker-popup .color-option');
+    let currentRing = null;
+
+    // 颜色映射表 - 使用浅色版本作为卡片背景
+    const colorMap = {
+      blue: 'rgba(0, 200, 240, 0.15)',
+      purple: 'rgba(139, 107, 255, 0.15)',
+      red: 'rgba(255, 107, 107, 0.15)',
+      orange: 'rgba(255, 169, 77, 0.15)',
+      green: 'rgba(81, 207, 102, 0.15)',
+      pink: 'rgba(240, 101, 149, 0.15)',
+      gray: 'rgba(134, 142, 150, 0.15)',
+      default: 'rgba(255, 255, 255, 0.6)'
+    };
+
+    // 点击颜色圆环显示颜色选择器
+    colorRings.forEach(ring => {
+      ring.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        currentRing = ring;
+        const rect = ring.getBoundingClientRect();
+        
+        colorPickerPopup.style.top = `${rect.bottom + 8}px`;
+        colorPickerPopup.style.left = `${rect.left}px`;
+        colorPickerPopup.classList.add('active');
+        
+        // 更新选中状态
+        colorOptions.forEach(opt => opt.classList.remove('active'));
+        const currentColor = ring.dataset.color || 'default';
+        const activeOption = colorPickerPopup.querySelector(`.color-option.${currentColor}`);
+        if (activeOption) activeOption.classList.add('active');
+      });
+    });
+
+    // 点击颜色选项更新卡片颜色
+    colorOptions.forEach(option => {
+      option.addEventListener('click', (e) => {
+        e.stopPropagation();
+        
+        if (!currentRing) return;
+        
+        // 获取颜色类名
+        const colorClass = Array.from(option.classList).find(cls => 
+          ['blue', 'purple', 'red', 'orange', 'green', 'pink', 'gray', 'default'].includes(cls)
+        );
+        
+        // 找到对应的卡片
+        const recordCard = currentRing.closest('.record-card');
+        
+        // 更新颜色
+        if (colorClass) {
+          const color = getComputedStyle(option).backgroundColor;
+          currentRing.style.background = color;
+          currentRing.dataset.color = colorClass;
+
+          // 情况1：记录卡片颜色圆环
+          const recordCard = currentRing.closest('.record-card');
+          if (recordCard) {
+            recordCard.style.background = colorMap[colorClass];
+            const recId = recordCard.dataset.recordId;
+            if (recId) {
+              const rec = records.find(r => r.id === parseInt(recId));
+              if (rec) { rec.color = color; rec.colorClass = colorClass; persistRecords(); }
+            }
+          }
+
+          // 情况2：分类标签圆点 → 整个标签块变色
+          const targetCat = colorPickerPopup._targetCategory;
+          const targetDot = colorPickerPopup._targetDot;
+          if (targetCat && targetDot) {
+            categoryColors[targetCat] = color;
+            persistCatColors();
+            // 重新渲染分类列表以应用颜色
+            renderCategories();
+          }
+        }
+
+        // 更新选中状态
+        colorOptions.forEach(opt => opt.classList.remove('active'));
+        option.classList.add('active');
+
+        // 关闭弹窗
+        colorPickerPopup.classList.remove('active');
+        currentRing = null;
+      });
+    });
+
+    // 点击外部关闭颜色选择器
+    document.addEventListener('click', () => {
+      colorPickerPopup.classList.remove('active');
+      currentRing = null;
+    });
+
+    // 点击火花效果
+    
+    new ClickSpark({
+      sparkColor: '#666',
+      sparkSize: 6,
+      sparkRadius: 12,
+      sparkCount: 8,
+      duration: 400
+    });
+
+    // ================================================================
+    // 导航
+    // ================================================================
+    // 返回按钮 — 上下文感知
+    var navBack = document.querySelector('.nav-back');
+    if (navBack) {
+    navBack.addEventListener('click', () => {
+      const activeTab = document.querySelector('.nav-tab.active');
+      if (activeTab && activeTab.dataset.tab !== 'ideas') {
+        navTabs.forEach(t => t.classList.remove('active'));
+        var ideasTab = document.querySelector('.nav-tab[data-tab="ideas"]');
+        if (ideasTab) ideasTab.classList.add('active');
+        tabContents.forEach(tc => tc.classList.remove('active'));
+        var tabIdeas = document.getElementById('tab-ideas');
+        if (tabIdeas) tabIdeas.classList.add('active');
+        detailPanel.classList.remove('active');
+      } else {
+        window.electronAPI.closePanel();
+      }
+    });
+    }
+
+    // 设置 → 设置页（navSettings 可能在旧版 DOM 中不存在）
+    var navSettings = document.getElementById('navSettings');
+    if (navSettings) {
+      navSettings.addEventListener('click', () => {
+        window.electronAPI.openPanel('设置页');
+      });
+    }
+
+    
+
+    // Tab 切换
+    const tabContents = document.querySelectorAll('.tab-content');
+    const navTabs = document.querySelectorAll('.nav-tab');
+
+    navTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetId = 'tab-' + tab.dataset.tab;
+        detailPanel.classList.remove('active');
+        navTabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        tabContents.forEach(tc => tc.classList.remove('active'));
+        document.getElementById(targetId).classList.add('active');
+
+        if (tab.dataset.tab === 'daily') {
+          loadDailyRecords();
+        }
+        if (tab.dataset.tab === 'weekly') {
+          loadWeeklyRecords();
+        }
+        if (tab.dataset.tab === 'spark') {
+          loadSparkContent();
+        }
+      });
+    });
+
+    // 数字跳动动画
+    function animateCountUp(elementId) {
+      const el = document.getElementById(elementId);
+      if (!el || el.dataset.animated) return;
+      el.dataset.animated = '1';
+
+      const target = parseInt(el.dataset.target, 10);
+      const duration = 600;
+      const startTime = performance.now();
+
+      function step(timestamp) {
+        const elapsed = timestamp - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // ease-out
+        const eased = 1 - (1 - progress) * (1 - progress);
+        el.textContent = Math.floor(eased * target);
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          el.textContent = target;
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
+    // ================================================================
+    // 数据层 — localStorage 持久化
+    // ================================================================
+    const STORAGE_KEY_CATEGORIES = 'pobi_categories';
+    const STORAGE_KEY_RECORDS    = 'pobi_records';
+
+    function loadData(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch (_) { return fallback; }
+    }
+
+    function saveData(key, data) {
+      localStorage.setItem(key, JSON.stringify(data));
+    }
+
+    // 安全 JSON 解析（防止损坏数据导致崩溃）
+    function safeJSON(raw, fallback) {
+      if (!raw) return fallback;
+      try { return JSON.parse(raw); }
+      catch (_) { return fallback; }
+    }
+
+    // 分类数据
+    let categories = loadData(STORAGE_KEY_CATEGORIES, [
+      '职业思考', '生活感悟', '人际关系', '学习方法', '读书笔记', '健康运动', '旅行计划'
+    ]);
+
+    // 记录数据 — 使用 createdAt ISO 格式与日报/周报过滤保持一致
+    let records = loadData(STORAGE_KEY_RECORDS, [
+      { id: 1, content: '今天刷到一个考研视频，说考研人数又创新高了，感觉竞争压力越来越大，不知道自己要不要也加入这个赛道...', category: '职业思考', createdAt: new Date().toISOString() },
+      { id: 2, content: '今天看到一个新闻说AI技术又突破了，很多人担心会被取代，我在想是不是应该学习一些AI相关的技能...', category: '职业思考', createdAt: new Date(Date.now() - 600000).toISOString() },
+      { id: 3, content: '我在想是不是应该换个城市生活，现在这个城市节奏太快了，感觉每天都在赶时间，没有停下来思考的机会...', category: '生活感悟', createdAt: new Date(Date.now() - 7200000).toISOString() },
+      { id: 4, content: '最近看到一个观点说年轻人不应该太早买房，应该把钱花在体验和成长上，这个观点让我有点纠结...', category: '生活感悟', createdAt: new Date(Date.now() - 86400000).toISOString() },
+    ]);
+
+    function persistCategories() { saveData(STORAGE_KEY_CATEGORIES, categories); }
+    function persistRecords()    { saveData(STORAGE_KEY_RECORDS, records); }
+
+    // ================================================================
+    // 分类管理
+    // ================================================================
+    const categoryInputPopup  = document.getElementById('categoryInputPopup');
+    const categoryInputField  = document.getElementById('categoryInputField');
+    const categoryCancelBtn   = document.getElementById('categoryCancelBtn');
+    const categoryConfirmBtn  = document.getElementById('categoryConfirmBtn');
+    const addCategoryFixed    = document.querySelector('.add-category-fixed');
+
+    function renderCategories() {
+      // 清空（保留"全部"和已存在的 category-item）
+      const existingItems = categoryScroll.querySelectorAll('.category-item');
+      existingItems.forEach(item => item.remove());
+
+      // 先加"全部"
+      const allItem = createCategoryItem('全部', true);
+      categoryScroll.appendChild(allItem);
+
+      // 加其他分类
+      categories.forEach(cat => {
+        categoryScroll.appendChild(createCategoryItem(cat, false));
+      });
+    }
+
+    // 分类颜色存储
+    const STORAGE_KEY_CAT_COLORS = 'pobi_category_colors';
+    let categoryColors = loadData(STORAGE_KEY_CAT_COLORS, {});
+
+    function persistCatColors() { saveData(STORAGE_KEY_CAT_COLORS, categoryColors); }
+
+    function createCategoryItem(name, isAll) {
+      const catColor = categoryColors[name] || '';
+      const labelStyle = catColor
+        ? `color:${catColor};background:${catColor.replace(')', ', 0.12)').replace('rgb', 'rgba')};`
+        : '';
+      const dotStyle = catColor
+        ? `background:${catColor};border-color:${catColor};`
+        : 'background:rgba(0,0,0,0.15);border:1px solid rgba(0,0,0,0.15);';
+      const item = document.createElement('div');
+      item.className = 'category-item';
+      const isActive = (window.currentCategory || '全部') === name;
+      item.innerHTML = `
+        <span class="category-label${isActive ? ' active' : ''}" style="${labelStyle}" data-cat="${name}">${name}<span class="category-color-dot" data-category="${name}" style="display:${isAll?'none':'inline-block'};width:8px;height:8px;border-radius:50%;margin-left:6px;${dotStyle}vertical-align:middle;cursor:pointer;"></span></span>
+        <div class="category-card">
+          <span class="card-link">${isAll ? '查看所有记录' : name + '相关记录'}</span>
+          ${isAll ? '<span class="card-link">按时间排序</span>' : ''}
+          <div class="card-divider"></div>
+          <span class="card-action">${isAll ? '导出全部' : '查看全部 (' + records.filter(r => r.category === name).length + '条)'}</span>
+        </div>
+      `;
+
+      // hover 定位下拉卡片
+      const label = item.querySelector('.category-label');
+      const card  = item.querySelector('.category-card');
+      item.addEventListener('mouseenter', () => {
+        const rect = label.getBoundingClientRect();
+        card.style.top  = `${rect.bottom + 8}px`;
+        card.style.left = `${rect.left}px`;
+      });
+
+      // 分类筛选
+      if (!isAll) {
+        label.addEventListener('click', (e) => {
+          if (e.target.classList.contains('category-color-dot')) return;
+          document.querySelectorAll('.category-label').forEach(l => l.classList.remove('active'));
+          label.classList.add('active');
+          window.currentCategory = name;
+          if (window.filterRecordsByCategory) {
+            window.filterRecordsByCategory(name);
+          }
+        });
+      } else {
+        label.addEventListener('click', (e) => {
+          if (e.target.classList.contains('category-color-dot')) return;
+          document.querySelectorAll('.category-label').forEach(l => l.classList.remove('active'));
+          label.classList.add('active');
+          window.currentCategory = '全部';
+          if (window.filterRecordsByCategory) {
+            window.filterRecordsByCategory('全部');
+          }
+        });
+      }
+
+      // 颜色圆点 → 弹出颜色选择器
+      const dot = item.querySelector('.category-color-dot');
+      if (dot) {
+        dot.addEventListener('click', (e) => {
+          e.stopPropagation();
+          currentRing = dot;
+          const rect = dot.getBoundingClientRect();
+          colorPickerPopup.style.top  = `${rect.bottom + 8}px`;
+          colorPickerPopup.style.left = `${rect.left}px`;
+          colorPickerPopup.classList.add('active');
+          colorOptions.forEach(opt => opt.classList.remove('active'));
+          colorPickerPopup._targetCategory = name;
+          colorPickerPopup._targetDot = dot;
+        });
+      }
+
+      return item;
+    }
+
+    
+
+    // "添加新分类" 点击
+    if (addCategoryFixed) {
+    addCategoryFixed.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rect = addCategoryFixed.getBoundingClientRect();
+      const popupWidth = 260;
+      let left = rect.left;
+      if (left + popupWidth > window.innerWidth) {
+        left = window.innerWidth - popupWidth - 10;
+      }
+      if (categoryInputPopup) {
+        categoryInputPopup.style.top  = `${rect.bottom + 8}px`;
+        categoryInputPopup.style.left = `${Math.max(10, left)}px`;
+        categoryInputPopup.classList.add('active');
+      }
+      if (categoryInputField) { categoryInputField.value = ''; setTimeout(() => categoryInputField.focus(), 100); }
+    });
+    }
+
+    if (categoryCancelBtn) {
+    categoryCancelBtn.addEventListener('click', () => {
+      if (categoryInputPopup) categoryInputPopup.classList.remove('active');
+    });
+    }
+
+    if (categoryConfirmBtn) {
+    categoryConfirmBtn.addEventListener('click', () => {
+      const name = categoryInputField ? categoryInputField.value.trim() : '';
+      if (name && !categories.includes(name)) {
+        categories.push(name);
+        persistCategories();
+        renderCategories();
+        showToast('分类已创建');
+      }
+      if (categoryInputPopup) categoryInputPopup.classList.remove('active');
+    });
+    }
+
+    if (categoryInputField) {
+    categoryInputField.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && categoryConfirmBtn) categoryConfirmBtn.click();
+    });
+    }
+
+    document.addEventListener('click', (e) => {
+      if (categoryInputPopup && !categoryInputPopup.contains(e.target) && e.target !== addCategoryFixed) {
+        categoryInputPopup.classList.remove('active');
+      }
+    });
+
+    // ================================================================
+    // 记录列表渲染
+    // ================================================================
+    const recordsList = document.querySelector('#tab-ideas .records-list');
+    const bottomStats = document.querySelector('#tab-ideas .bottom-stats');
+
+    let currentDetailRecord = null; // 当前打开的记录
+
+    window.filterRecordsByCategory = function(category) {
+      const allRecords = safeJSON(localStorage.getItem('pobi_records'), []);
+      const filtered = category && category !== '全部' ? allRecords.filter(function(r) { return r.category === category; }) : allRecords;
+      records = allRecords;
+      window.currentCategory = category;
+      // 更新标签 active 状态
+      document.querySelectorAll('.category-label').forEach(function(l) {
+        l.classList.remove('active');
+        if (l.textContent.trim() === category) l.classList.add('active');
+      });
+      window.renderRecordList(filtered);
+      var statsEl = document.querySelector('#tab-ideas .bottom-stats');
+      if (statsEl) statsEl.innerHTML = '<span class="stats-text">已记录 ' + filtered.length + ' 条想法</span>';
+    }
+
+    window.renderRecordList = function(list) {
+      var recordsList = document.querySelector('#tab-ideas .records-list');
+      if (!recordsList) return;
+      recordsList.innerHTML = '';
+      list.forEach((rec) => {
+        const card = document.createElement('div');
+        card.className = 'record-card';
+        card.dataset.recordId = rec.id;
+        const aiContent = rec.aiAnalysis ? `
+          <div class="record-divider"></div>
+          <div class="record-ai-content">${rec.aiAnalysis}</div>
+        ` : '';
+        card.innerHTML = `
+          <div class="record-category">${rec.category}<span class="color-ring"></span></div>
+          <div class="record-content">${rec.content}</div>
+          ${aiContent}
+          <div class="record-footer">
+            <span class="record-time">${(window.PoBiUtils && PoBiUtils.formatTime) ? PoBiUtils.formatTime(rec.createdAt || rec.time) : (rec.time || '')}</span>
+            <div class="record-actions">
+              <span class="action-btn primary">破壁</span>
+              <span class="action-btn secondary">删除</span>
+            </div>
+          </div>
+        `;
+
+        // 点击卡片 → 详情
+        card.addEventListener('click', (e) => {
+          if (e.target.classList.contains('action-btn')) return;
+          openDetailPanel(rec);
+        });
+
+        // 删除按钮 → 确认弹窗
+        card.querySelector('.action-btn.secondary').addEventListener('click', (e) => {
+          e.stopPropagation();
+          showConfirm('确认删除此记录？', () => {
+            records = records.filter(r => r.id !== rec.id);
+            persistRecords();
+            window.renderRecordList(records);
+            renderCategories();
+            detailPanel.classList.remove('active');
+            showToast('已删除');
+          });
+        });
+
+        // 破壁按钮
+        card.querySelector('.action-btn.primary').addEventListener('click', async (ev) => {
+          ev.stopPropagation();
+          const btn = ev.currentTarget;
+          const originalText = btn.textContent;
+          btn.textContent = '分析中...';
+          btn.style.opacity = '0.7';
+          btn.style.pointerEvents = 'none';
+          
+          try {
+            const config = PoBiUtils.getAIConfig();
+            if (!config.apiKey) {
+              showToast('请先在设置中配置 API Key');
+              return;
+            }
+
+            const aiResult = await PoBiUtils.callAI(rec.content);
+            rec.aiAnalysis = aiResult;
+            const recordIndex = records.findIndex(r => r.id === rec.id);
+            if (recordIndex !== -1) {
+              records[recordIndex] = rec;
+              persistRecords();
+            }
+            window.renderRecordList(records);
+            showToast('破壁完成');
+          } catch (error) {
+            console.error('破壁失败:', error);
+            const errorMsg = error.message || '破壁失败';
+            if (errorMsg.includes('API Key') || errorMsg.includes('apiKey')) {
+              showToast('API Key 未配置，请在设置中填写');
+            } else if (errorMsg.includes('401') || errorMsg.includes('403')) {
+              showToast('API Key 无效或权限不足');
+            } else if (errorMsg.includes('429') || errorMsg.includes('limit')) {
+              showToast('API 调用次数超限，请稍后重试');
+            } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+              showToast('网络连接失败，请检查网络');
+            } else {
+              showToast('识别错误，无法完成破壁');
+            }
+          } finally {
+            btn.textContent = originalText;
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+          }
+        });
+
+        // 颜色圆环 → 颜色选择器
+        const colorRing = card.querySelector('.color-ring');
+        if (rec.color) {
+          colorRing.style.background = rec.color;
+          card.style.background = rec.color.replace(')', ', 0.15)').replace('rgb', 'rgba');
+        }
+        colorRing.addEventListener('click', (e) => {
+          e.stopPropagation();
+          currentRing = colorRing;
+          const rect = colorRing.getBoundingClientRect();
+          colorPickerPopup.style.top = `${rect.bottom + 8}px`;
+          colorPickerPopup.style.left = `${rect.left}px`;
+          colorPickerPopup.classList.add('active');
+          // 更新选中状态
+          colorOptions.forEach(opt => opt.classList.remove('active'));
+          const activeOpt = colorPickerPopup.querySelector(`.color-option.${rec.colorClass || 'default'}`);
+          if (activeOpt) activeOpt.classList.add('active');
+          // 暂存当前记录引用
+          colorPickerPopup._targetRecord = rec;
+          colorPickerPopup._targetCard = card;
+          colorPickerPopup._targetRing = colorRing;
+        });
+
+        recordsList.appendChild(card);
+      });
+
+      bottomStats.innerHTML = `<span class="stats-text">已记录 ${list.length} 条想法</span>`;
+    }
+
+    // 打开详情面板
+    function openDetailPanel(rec) {
+      currentDetailRecord = rec;
+      detailCategory.textContent = rec.category;
+      detailContentView.textContent = rec.content;
+      detailTime.textContent = (window.PoBiUtils && PoBiUtils.formatTime) ? PoBiUtils.formatTime(rec.createdAt || rec.time) : (rec.time || '');
+      
+      const detailAiContent = document.getElementById('detailAiContent');
+      if (detailAiContent) {
+        if (rec.aiAnalysis && rec.aiAnalysis.trim()) {
+          detailAiContent.textContent = rec.aiAnalysis;
+          detailAiContent.style.display = 'block';
+        } else {
+          detailAiContent.style.display = 'none';
+        }
+      }
+      
+      detailContentView.contentEditable = 'false';
+      detailContentView.style.outline = 'none';
+      polishPreview.style.display = 'none';
+      detailEditBtn.textContent = '编辑';
+      detailPanel.classList.add('active');
+    }
+
+    // ================================================================
+    // 详情面板交互
+    // ================================================================
+    const detailEditArea     = document.getElementById('detailEditArea');
+    const detailContentView  = document.getElementById('detailContentView');
+    const polishPreview      = document.getElementById('polishPreview');
+    const detailEditBtn      = document.getElementById('detailEditBtn');
+    const detailPolishBtn    = document.getElementById('detailPolishBtn');
+    const detailDeleteBtn    = document.getElementById('detailDeleteBtn');
+
+    // 编辑 / 保存
+    detailEditBtn.addEventListener('click', () => {
+      if (detailEditBtn.textContent === '编辑') {
+        // 进入编辑模式：直接让内容区可编辑
+        detailContentView.contentEditable = 'true';
+        detailContentView.focus();
+        detailContentView.style.outline = '1px dashed rgba(0,0,0,0.15)';
+        detailContentView.style.borderRadius = '4px';
+        detailEditBtn.textContent = '保存';
+      } else {
+        // 保存
+        detailContentView.contentEditable = 'false';
+        detailContentView.style.outline = 'none';
+        currentDetailRecord.content = detailContentView.textContent;
+        detailEditBtn.textContent = '编辑';
+        // 持久化
+        const idx = records.findIndex(r => r.id === currentDetailRecord.id);
+        if (idx >= 0) { records[idx] = currentDetailRecord; persistRecords(); }
+        window.renderRecordList(records);
+        showToast('已保存');
+      }
+    });
+
+    // 润色
+    detailPolishBtn.addEventListener('click', () => {
+      if (!currentDetailRecord) return;
+      // 模拟 AI 润色
+      const polished = currentDetailRecord.content
+        .replace(/\.\.\./g, '……')
+        .replace(/,/g, '，')
+        .replace(/！/g, '! ')
+        + '\n\n—— 以上内容已由 AI 协助润色，使表达更加流畅清晰。';
+      polishPreview.textContent = polished;
+      polishPreview.style.display = 'block';
+    });
+
+    // 删除（详情面板内）
+    detailDeleteBtn.addEventListener('click', () => {
+      showConfirm('确认删除此记录？', () => {
+        records = records.filter(r => r.id !== currentDetailRecord.id);
+        persistRecords();
+        window.renderRecordList(records);
+        renderCategories();
+        detailPanel.classList.remove('active');
+        showToast('已删除');
+      });
+    });
+
+    // 记录下来按钮
+    const detailRecordBtn = document.getElementById('detailRecordBtn');
+    detailRecordBtn.addEventListener('click', () => {
+      showToast('已记录');
+      detailPanel.classList.remove('active');
+    });
+
+    // ================================================================
+    // 删除确认弹窗
+    // ================================================================
+    const confirmPopup     = document.getElementById('confirmPopup');
+    const confirmPopupText = document.getElementById('confirmPopupText');
+    const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+    const confirmDangerBtn = document.getElementById('confirmDangerBtn');
+    let confirmCallback = null;
+
+    function showConfirm(text, callback) {
+      confirmPopupText.textContent = text;
+      confirmCallback = callback;
+      confirmPopup.classList.add('active');
+    }
+
+    confirmCancelBtn.addEventListener('click', () => {
+      confirmPopup.classList.remove('active');
+      confirmCallback = null;
+    });
+
+    confirmDangerBtn.addEventListener('click', () => {
+      confirmPopup.classList.remove('active');
+      if (confirmCallback) confirmCallback();
+      confirmCallback = null;
+    });
+
+    // ================================================================
+    // 浮动 + 按钮 / 快速记录
+    // ================================================================
+    const fabBtn           = document.getElementById('fabBtn');
+    const quickRecordPopup = document.getElementById('quickRecordPopup');
+    const quickRecordInput = document.getElementById('quickRecordInput');
+    const quickRecordCategory = document.getElementById('quickRecordCategory');
+    const quickRecordSave  = document.getElementById('quickRecordSave');
+    let quickCatIndex = 0;
+    if (!window.currentCategory) window.currentCategory = '全部';
+
+    fabBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      quickRecordPopup.classList.toggle('active');
+      if (quickRecordPopup.classList.contains('active')) {
+        quickRecordCategory.textContent = '分类：' + window.currentCategory;
+        quickRecordInput.focus();
+      }
+    });
+
+    quickRecordSave.addEventListener('click', () => {
+      const content = quickRecordInput.value.trim();
+      if (!content) return;
+      const newId = records.length > 0 ? Math.max(...records.map(r => r.id)) + 1 : 1;
+      records.unshift({
+        id: newId,
+        content,
+        category: window.currentCategory,
+        time: '刚刚',
+        createdAt: new Date().toISOString(),
+      });
+      persistRecords();
+      quickRecordInput.value = '';
+      quickRecordPopup.classList.remove('active');
+      if (window.currentCategory === '全部') {
+        window.renderRecordList(records);
+      } else {
+        if (window.filterRecordsByCategory) {
+          window.filterRecordsByCategory(window.currentCategory);
+        }
+      }
+      showToast('保存成功');
+    });
+
+    // 点击外部关闭快速记录
+    document.addEventListener('click', (e) => {
+      if (!quickRecordPopup.contains(e.target) && e.target !== fabBtn) {
+        quickRecordPopup.classList.remove('active');
+      }
+    });
+
+    // Toast 提示
+    const saveToast = document.getElementById('saveToast');
+    let toastTimer = null;
+    function showToast(msg) {
+      saveToast.textContent = msg;
+      saveToast.classList.add('visible');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => saveToast.classList.remove('visible'), 2000);
+    }
+
+    // 初始化渲染
+    renderCategories();
+    window.renderRecordList(records);
+    // 预加载日报和周报数据
+    loadDailyRecords();
+    loadWeeklyRecords();
+
+    // ================================================================
+    // 卡片拖拽移动 + 边缘缩放
+    // ================================================================
+    function makeDraggableResizable(card, handleSelector) {
+      const handle = handleSelector ? card.querySelector(handleSelector) : card;
+      if (!handle) return;
+
+      let dragging = false, resizing = false;
+      let resizeEdge = null;
+      let startX, startY, startW, startH, startL, startT;
+      const EDGE = 8;
+
+      card.addEventListener('mousemove', (e) => {
+        if (dragging || resizing) return;
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        if (x > rect.width - EDGE && y > rect.height - EDGE) card.style.cursor = 'nwse-resize';
+        else if (x < EDGE && y > rect.height - EDGE) card.style.cursor = 'nesw-resize';
+        else if (x > rect.width - EDGE && y < EDGE) card.style.cursor = 'nesw-resize';
+        else if (x < EDGE && y < EDGE) card.style.cursor = 'nwse-resize';
+        else if (x > rect.width - EDGE || x < EDGE) card.style.cursor = 'ew-resize';
+        else if (y > rect.height - EDGE || y < EDGE) card.style.cursor = 'ns-resize';
+        else card.style.cursor = '';
+      });
+
+      card.addEventListener('mouseleave', () => {
+        if (!dragging && !resizing) card.style.cursor = '';
+      });
+
+      card.addEventListener('mousedown', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const onRight = x > rect.width - EDGE, onLeft = x < EDGE;
+        const onBottom = y > rect.height - EDGE, onTop = y < EDGE;
+
+        if (onRight || onLeft || onBottom || onTop) {
+          resizing = true;
+          resizeEdge = (onTop ? 'n' : '') + (onBottom ? 's' : '') + (onLeft ? 'w' : '') + (onRight ? 'e' : '');
+          card.style.position = 'fixed';
+          card.style.left = rect.left + 'px';
+          card.style.top  = rect.top + 'px';
+          startX = e.clientX; startY = e.clientY;
+          startW = rect.width; startH = rect.height;
+          startL = rect.left; startT = rect.top;
+          e.preventDefault();
+        } else if (handle.contains(e.target)) {
+          dragging = true;
+          card.style.position = 'fixed';
+          const r = card.getBoundingClientRect();
+          card.style.left = r.left + 'px';
+          card.style.top  = r.top + 'px';
+          startX = e.clientX; startY = e.clientY;
+          startL = r.left; startT = r.top;
+          card.style.transition = 'none';
+          e.preventDefault();
+        }
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (resizing) {
+          const dx = e.clientX - startX, dy = e.clientY - startY;
+          let nw = startW, nh = startH, nl = startL, nt = startT;
+          if (resizeEdge.includes('e')) nw = Math.max(260, startW + dx);
+          if (resizeEdge.includes('w')) { nw = Math.max(260, startW - dx); nl = startL + startW - nw; }
+          if (resizeEdge.includes('s')) nh = Math.max(300, startH + dy);
+          if (resizeEdge.includes('n')) { nh = Math.max(300, startH - dy); nt = startT + startH - nh; }
+          card.style.width  = nw + 'px';
+          card.style.height = nh + 'px';
+          card.style.left   = nl + 'px';
+          card.style.top    = nt + 'px';
+        }
+        if (dragging) {
+          card.style.left = (startL + e.clientX - startX) + 'px';
+          card.style.top  = (startT + e.clientY - startY) + 'px';
+        }
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (dragging) card.style.transition = '';
+        dragging = false; resizing = false; resizeEdge = null;
+      });
+    }
+
+    // makeDraggableResizable 在扩展弹窗中禁用，避免冲突
+
+    // ================================================================
+    // 灵感火花卡片 — 悬停右侧弹出完整内容
+    const sparkPopout     = document.getElementById('sparkPopout');
+    const sparkPopoutLabel = document.getElementById('sparkPopoutLabel');
+    const sparkPopoutText  = document.getElementById('sparkPopoutText');
+    let sparkPopoutTimer   = null;
+
+    function showSparkPopout(card, label, text) {
+      const rect = card.getBoundingClientRect();
+      sparkPopoutLabel.textContent = label;
+      sparkPopoutText.textContent  = text;
+      // 智能定位：如果右侧空间不够，弹到左边
+      const popoutW = 300;
+      if (rect.right + 16 + popoutW > window.innerWidth - 8) {
+        sparkPopout.style.left = (rect.left - popoutW - 16) + 'px';
+      } else {
+        sparkPopout.style.left = (rect.right + 16) + 'px';
+      }
+      sparkPopout.style.top  = rect.top + 'px';
+      sparkPopout.classList.add('active');
+    }
+
+    function hideSparkPopout() {
+      sparkPopout.classList.remove('active');
+    }
+
+    // 火花卡片 hover 事件
+    const sparkCards = [
+      { el: document.getElementById('sparkCard1'), label: '反向观点', text: '你之所以觉得考研是唯一出路，可能是因为你只刷到考研相关的内容。当你开始关注考研话题，平台会持续推送同类内容，让你误以为「所有人都在考研」。实际上，2025 年考研人数较去年下降了 11.4%，考研热度正在降温。与此同时，职业教育、技能培训等替代路径正在被更多人选择。你看到的不是全貌，而是算法为你构建的「考研焦虑」信息茧房。' },
+      { el: document.getElementById('sparkCard2'), label: '关联话题', text: '你在思考 AI 是否会取代工作——有没有关注过「AI 训练师」「提示工程师」「AI 伦理合规」这些新兴职业正在快速崛起？与其担心被取代，不如看看这些新赛道是否适合你。微软、谷歌、苹果 2025 年都扩大了非学历招聘的比例，技能和经验比学历更重要。' },
+    ];
+
+    sparkCards.forEach(({ el, label, text }) => {
+      el.addEventListener('mouseenter', () => {
+        clearTimeout(sparkPopoutTimer);
+        showSparkPopout(el, label, text);
+      });
+      el.addEventListener('mouseleave', () => {
+        sparkPopoutTimer = setTimeout(hideSparkPopout, 250);
+      });
+    });
+
+    sparkPopout.addEventListener('mouseenter', () => {
+      clearTimeout(sparkPopoutTimer);
+    });
+    sparkPopout.addEventListener('mouseleave', () => {
+      sparkPopoutTimer = setTimeout(hideSparkPopout, 200);
+    });
+
+    // 日报/周报记录 — 点击弹出详情
+    const dailyItems = document.querySelectorAll('#tab-daily .embedded-item');
+    const weeklyItems = document.querySelectorAll('#tab-weekly .embedded-item');
+    function loadDailyRecords() {
+      const container = document.getElementById('dailyRecordsContainer');
+      if (!container) return;
+      const allRecs = safeJSON(localStorage.getItem('pobi_records'), []);
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toISOString();
+      const todayRecs = allRecs.filter(r => r.createdAt >= todayStart && r.createdAt < todayEnd);
+
+      // 更新嵌入日报分析
+      embedDailyReport(todayRecs);
+
+      if (todayRecs.length === 0) {
+        container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--color-text-tertiary);font-size:13px;">今天还没有记录</div>';
+        return;
+      }
+      window._dailyItems = [];
+      window._dailyFullTexts = [];
+      container.innerHTML = todayRecs.map((r, i) => {
+        window._dailyFullTexts.push(r.content);
+        var time = PoBiUtils ? PoBiUtils.formatTime(r.createdAt) : '';
+        return '<div class="record-item" data-index="' + i + '">' +
+          '<div class="record-item-content">' + r.content + '</div>' +
+          '<div class="record-item-meta"><span>' + time + '</span></div>' +
+        '</div>';
+      }).join('');
+      window._dailyItems = container.querySelectorAll('.record-item');
+      window._dailyItems.forEach((item, i) => {
+        item.addEventListener('click', () => {
+          detailCategory.textContent = '今日记录';
+          detailContent.textContent = window._dailyFullTexts[i] || item.textContent;
+          detailTime.textContent = '今天';
+          detailPanel.classList.add('active');
+        });
+      });
+    }
+    // dailyItems / dailyFullTexts 已在上方 loadDailyRecords 中使用 window._dailyItems 管理
+
+    function loadWeeklyRecords() {
+      const container = document.getElementById('weeklyRecordsContainer');
+      if (!container) return;
+      const allRecs = safeJSON(localStorage.getItem('pobi_records'), []);
+      const now = new Date();
+      const dayOfWeek = now.getDay();
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+      const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mondayOffset);
+      const weekStart = monday.toISOString();
+      const weekEnd = new Date(monday.getTime() + 7 * 86400000).toISOString();
+      const weekRecs = allRecs.filter(r => r.createdAt >= weekStart && r.createdAt < weekEnd);
+
+      // 更新嵌入周报分析
+      embedWeeklyReport(weekRecs);
+
+      if (weekRecs.length === 0) {
+        container.innerHTML = '<div style="padding:20px;text-align:center;color:var(--color-text-tertiary);font-size:13px;">本周还没有记录</div>';
+        return;
+      }
+      window._weeklyItems = [];
+      window._weeklyFullTexts = [];
+      container.innerHTML = weekRecs.map((r, i) => {
+        window._weeklyFullTexts.push(r.content);
+        var time = PoBiUtils ? PoBiUtils.formatTime(r.createdAt) : '';
+        return '<div class="record-item" data-index="' + i + '">' +
+          '<div class="record-item-content">' + r.content + '</div>' +
+          '<div class="record-item-meta"><span>' + time + '</span></div>' +
+        '</div>';
+      }).join('');
+      window._weeklyItems = container.querySelectorAll('.record-item');
+      window._weeklyItems.forEach((item, i) => {
+        item.addEventListener('click', () => {
+          detailCategory.textContent = '本周记录';
+          detailContent.textContent = window._weeklyFullTexts[i] || item.textContent;
+          detailTime.textContent = '本周';
+          detailPanel.classList.add('active');
+        });
+      });
+    }
+
+    // ── 嵌入日报分析 ──
+    function embedDailyReport(todayRecs) {
+      var statEl = document.getElementById('dailyEmbedStat');
+      var topicEl = document.getElementById('dailyEmbedTopic');
+      var aiEl = document.getElementById('dailyEmbedAI');
+      var count = todayRecs.length;
+
+      if (count === 0) {
+        if (statEl) statEl.textContent = '今日0条';
+        if (topicEl) topicEl.textContent = '';
+        if (aiEl) aiEl.textContent = '今天还没写下什么。回想一件小事，记下来就好。';
+        return;
+      }
+
+      var mainTopic = extractKeyword(todayRecs);
+      if (statEl) statEl.textContent = '今日' + count + '条，主要聊「' + mainTopic + '」';
+
+      // 变化点
+      var cats = {};
+      todayRecs.forEach(function(r) {
+        var cat = (r.category && r.category !== '全部') ? r.category : null;
+        if (cat) cats[cat] = (cats[cat] || 0) + 1;
+      });
+      var catNames = Object.keys(cats);
+      if (catNames.length === 1 && catNames[0] === mainTopic) {
+        if (topicEl) topicEl.textContent = count + '条都在聊同一件事。';
+      } else if (catNames.length >= 3) {
+        if (topicEl) topicEl.textContent = '话题较分散，涉及' + catNames.length + '个方向。';
+      } else {
+        if (topicEl) topicEl.textContent = '';
+      }
+
+      // 提醒
+      var reminder = '';
+      if (count <= 2) reminder = '今天记了' + count + '条，回顾一下，哪条最值得留下？';
+      else if (count <= 5) reminder = '今天有' + count + '条记录。选一条你觉得最重要的。';
+      else reminder = '今天记录很多。挑一条写得最顺的，明天试着从它的反面再写一条。';
+      if (aiEl) aiEl.textContent = reminder;
+    }
+
+    // ── 嵌入周报分析 ──
+    function embedWeeklyReport(weekRecs) {
+      var statEl = document.getElementById('weeklyEmbedStat');
+      var topicEl = document.getElementById('weeklyEmbedTopic');
+      var aiEl = document.getElementById('weeklyEmbedAI');
+      var count = weekRecs.length;
+
+      if (count === 0) {
+        if (statEl) statEl.textContent = '本周0条';
+        if (topicEl) topicEl.textContent = '';
+        if (aiEl) aiEl.textContent = '这周还没写下什么。不用补，从今天开始记一条就好。';
+        return;
+      }
+
+      // 活跃天数
+      var days = new Set();
+      weekRecs.forEach(function(r) {
+        var d = new Date(r.createdAt);
+        days.add(d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate());
+      });
+
+      var mainTopic = extractKeyword(weekRecs);
+      if (statEl) statEl.textContent = '本周' + count + '条，活跃' + days.size + '天';
+
+      // 关注点 + 对比
+      var lastWeekCount = 0;
+      try {
+        var allRecs = safeJSON(localStorage.getItem('pobi_records'), []);
+        var now = new Date();
+        var dow = now.getDay();
+        var mo = dow === 0 ? -6 : 1 - dow;
+        var thisMon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + mo);
+        var lastMon = new Date(thisMon.getTime() - 7 * 86400000);
+        lastWeekCount = allRecs.filter(function(r) {
+          return r.createdAt >= lastMon.toISOString() && r.createdAt < thisMon.toISOString();
+        }).length;
+      } catch(e) {}
+
+      var topicLine = '主要关注：' + mainTopic;
+      if (lastWeekCount > 0 && count > lastWeekCount) topicLine += ' · 比上周多' + (count - lastWeekCount) + '条';
+      if (topicEl) topicEl.textContent = topicLine;
+
+      // 反馈
+      var feedback = '';
+      if (count <= 3) feedback = '这周记了' + count + '条。翻一下，哪一条最值得留到下周？';
+      else if (count <= 7) feedback = '这周有' + count + '条记录，分布较散。试试下周聚焦一个方向。';
+      else feedback = '这周记录比较多，整理一下，有没有反复出现的词？';
+      if (aiEl) aiEl.textContent = feedback;
+    }
+
+    // ── 简单关键词提取 ──
+    function extractKeyword(records) {
+      var cats = {};
+      records.forEach(function(r) {
+        if (r.category && r.category !== '全部') {
+          cats[r.category] = (cats[r.category] || 0) + 1;
+        }
+      });
+      var topCat = Object.entries(cats).sort(function(a,b) { return b[1]-a[1]; })[0];
+      if (topCat && topCat[1] / records.length >= 0.4) return topCat[0];
+
+      var stopWords = ['今天','一个','这个','什么','怎么','为什么','是不是','我觉得','因为','所以','但是','可以','没有','不会','不过','如果','已经','还是','就是','不是','知道','觉得','应该','可能','一定','以后','以前','现在','时候','东西','这样','那样'];
+      var wordFreq = {};
+      records.forEach(function(r) {
+        var clean = (r.content || '').replace(/[，。！？、；：""''（）【】《》\s\d,.!?;:'"()\[\]{}，．？！～＠＃￥％…＆×（）—＋＝\/\\|@#$%^&*+=~\`]/g, '');
+        for (var len = 3; len >= 2; len--) {
+          for (var i = 0; i <= clean.length - len; i++) {
+            var w = clean.substring(i, i + len);
+            if (!stopWords.some(function(sw) { return w.indexOf(sw) >= 0; })) {
+              wordFreq[w] = (wordFreq[w] || 0) + 1;
+            }
+          }
+        }
+      });
+      var sorted = Object.entries(wordFreq).sort(function(a,b) { return b[1]-a[1]; });
+      return sorted.length > 0 ? sorted[0][0] : '日常';
+    }
+
+    async function loadSparkContent() {
+      const container = document.getElementById('sparkContent');
+      if (!container) return;
+
+      const allRecs = safeJSON(localStorage.getItem('pobi_records'), []);
+      const recentRecs = allRecs.slice(0, 10);
+
+      const sparkCard1 = document.getElementById('sparkCard1');
+      if (!sparkCard1) return;
+
+      const labelEl = sparkCard1.querySelector('.embedded-card-label');
+      const textEl = sparkCard1.querySelector('.embedded-card-text');
+      
+      if (recentRecs.length === 0) {
+        labelEl.textContent = '今日提醒';
+        textEl.textContent = '今天还没有记录。写下今天最安静的一个瞬间，无论多小。';
+        return;
+      }
+      
+      labelEl.textContent = '灵感火花';
+      textEl.textContent = '正在生成灵感...';
+      
+      try {
+        const context = recentRecs.map(r => r.content).join('\n');
+        const systemPrompt = '你是一个理性、温和、有用的灵感助手，像朋友轻轻推了一下。请根据用户最近的记录，生成一条灵感火花。输出规则：1) 每一条固定三行，每行控制在18-22字之间，必须是完整的句子；2) 第一行说事实，第二行说盲区，第三行给可执行动作；3) 不加"我发现""你最近"等引子，直接说事实；4) 不加"建议你""你可以"等说教；5) 不引用用户原文，不重复用户说过的话；6) 语气温和，不冷冰冰，不说教，不鸡汤；7) 动作具体可执行；8) 每行必须是完整的句子，不要中途截断。';
+        const result = await PoBiUtils.callAI(context, systemPrompt);
+        
+        let lines = result.split('\n').filter(l => l.trim()).slice(0, 3);
+        textEl.textContent = lines.join('\n');
+      } catch (error) {
+        console.error('生成灵感火花失败:', error);
+        textEl.textContent = '灵感生成失败，请稍后重试。';
+      }
+    }
+
+    // 日报/周报嵌入项的点击事件已由 loadDailyRecords / loadWeeklyRecords 动态绑定
+
+    // 每条记录的「破壁」按钮 → 破壁结果
+    document.querySelectorAll('.action-btn.primary').forEach(btn => {
+      if (btn.textContent.trim() === '破壁') {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const originalText = btn.textContent;
+          btn.textContent = '分析中...';
+          btn.style.opacity = '0.7';
+          btn.style.pointerEvents = 'none';
+          
+          try {
+            const config = PoBiUtils.getAIConfig();
+            if (!config.apiKey) {
+              showToast('请先在设置中配置 API Key');
+              return;
+            }
+
+            const content = btn.closest('.record-card')?.querySelector('.record-content')?.textContent || '';
+            if (!content.trim()) {
+              showToast('记录内容为空');
+              return;
+            }
+
+            const aiResult = await PoBiUtils.callAI(content);
+            localStorage.setItem('pobi_pending_pobi_data', JSON.stringify({
+              originalContent: content,
+              aiAnalysis: aiResult
+            }));
+            window.electronAPI.openPanel('破壁结果');
+          } catch (error) {
+            console.error('破壁失败:', error);
+            showToast('破壁失败，请检查 API 配置');
+          } finally {
+            btn.textContent = originalText;
+            btn.style.opacity = '1';
+            btn.style.pointerEvents = 'auto';
+          }
+        });
+      }
+    });
+
+    // AI API 调用统一使用 shared.js 中的 PoBiUtils.callAI() 和 PoBiUtils.getAIConfig()
+    // 不再重复实现，避免 URL 拼接等差异
+  } catch(e) { console.warn('[记录面板] 初始化异常（已忽略）:', e.message); }
+  </script>
+
+  <!-- 按钮守护：确保关键交互始终可用 -->
+  <script>
+  (function() {
+    var api = window.electronAPI || {};
+
+    // ── 标签页切换（事件委托，确保始终可用）──
+    var navTabsContainer = document.getElementById('navTabs');
+    if (navTabsContainer) {
+      navTabsContainer.addEventListener('click', function(e) {
+        var tab = e.target.closest('.nav-tab');
+        if (!tab) return;
+        e.stopPropagation();
+        e.preventDefault();
+        var tabId = tab.dataset.tab;
+        if (!tabId) return;
+
+        // 切换按钮高亮
+        var allTabs = document.querySelectorAll('.nav-tab');
+        allTabs.forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+
+        // 切换内容区
+        var allContents = document.querySelectorAll('.tab-content');
+        allContents.forEach(function(tc) { tc.classList.remove('active'); });
+        var target = document.getElementById('tab-' + tabId);
+        if (target) {
+          target.classList.add('active');
+          // 如果切换到周报，触发数字动画
+          if (tabId === 'weekly') {
+            var countEl = document.getElementById('weeklyCount');
+            if (countEl && !countEl.dataset.animated) {
+              countEl.dataset.animated = '1';
+            }
+          }
+        }
+      });
+    }
+
+    // ── 刷新按钮：在"我的想法"tab 重新渲染记录 ──
+    // 定期检查是否有新记录（处理主脚本可能的渲染失败）
+    var recordsList = document.querySelector('#tab-ideas .records-list');
+    if (recordsList) {
+      // 如果 2 秒后列表仍为空，尝试从 localStorage 读取并渲染
+      setTimeout(function() {
+        if (recordsList && recordsList.children.length === 0) {
+          try {
+            var saved = safeJSON(localStorage.getItem('pobi_records'), []);
+            if (saved.length > 0) {
+              // 调用全局筛选函数，保持分类筛选状态
+              var activeLabel = document.querySelector('.category-label.active');
+              var currentCat = activeLabel ? (activeLabel.dataset.cat || '全部') : '全部';
+              if (window.filterRecordsByCategory) {
+                window.filterRecordsByCategory(currentCat);
+              }
+              console.log('[守护] 已渲染 ' + saved.length + ' 条记录');
+            }
+          } catch(e) {
+            console.error('[守护] 渲染失败:', e);
+          }
+        }
+      }, 2000);
+    }
+
+    // ── 主题切换 🌓 ──
+    var navTheme = document.getElementById('navTheme');
+    if (navTheme && window.ThemeManager) {
+      navTheme.addEventListener('click', function() {
+        var t = window.ThemeManager.toggle();
+        navTheme.textContent = t === 'dark' ? '☀️' : '🌓';
+      });
+    }
+
+    // ── 关闭面板 ✕ ──
+    var navClose = document.getElementById('navClose');
+    if (navClose) {
+      navClose.addEventListener('click', function() {
+        if (api.closePanel) api.closePanel();
+      });
+    }
+
+    // ── 设置页（保留在齿轮图标的旧引用兼容）──
+    var navSettings = document.getElementById('navSettings');
+    if (navSettings) {
+      navSettings.addEventListener('click', function() {
+        if (api.openPanel) api.openPanel('设置页');
+      });
+    }
+
+    // ── 返回按钮 ──
+    var navBack = document.querySelector('.nav-back');
+    if (navBack) {
+      navBack.addEventListener('click', function() {
+        if (api.closePanel) api.closePanel();
+      });
+    }
+
+    // ── + 新分类按钮 ──
+    var addCatBtn = document.querySelector('.add-category-fixed');
+    if (addCatBtn) {
+      addCatBtn.style.cursor = 'grab';
+      addCatBtn.addEventListener('click', function() {
+        var popup = document.getElementById('categoryInputPopup');
+        var field = document.getElementById('categoryInputField');
+        if (popup && field) {
+          popup.classList.add('active');
+          field.value = '';
+          setTimeout(function() { field.focus(); }, 100);
+        }
+      });
+    }
+
+    // ── 分类输入弹窗 创建/取消 ──
+    var catConfirm = document.getElementById('categoryConfirmBtn');
+    var catCancel = document.getElementById('categoryCancelBtn');
+    var catPopup = document.getElementById('categoryInputPopup');
+    var catField = document.getElementById('categoryInputField');
+    if (catConfirm && catField && catPopup) {
+      catConfirm.addEventListener('click', function() {
+        var name = catField.value.trim();
+        if (!name) return;
+        var cats = safeJSON(localStorage.getItem('pobi_categories'), []);
+        if (cats.indexOf(name) < 0) { cats.push(name); localStorage.setItem('pobi_categories', JSON.stringify(cats)); }
+        catPopup.classList.remove('active');
+        // 刷新分类栏
+        refreshCategoryBar(cats);
+        showQuickToast('分类「' + name + '」已添加');
+      });
+      catCancel.addEventListener('click', function() {
+        catPopup.classList.remove('active');
+      });
+    }
+
+    function refreshCategoryBar(cats) {
+      var scroll = document.querySelector('.category-scroll');
+      if (!scroll) return;
+      var currentCat = window.currentCategory || '全部';
+      var html = '<div class="category-item"><span class="category-label' + (currentCat === '全部' ? ' active' : '') + '">' + '全部' + '</span></div>';
+      cats.forEach(function(c) {
+        html += '<div class="category-item"><span class="category-label' + (currentCat === c ? ' active' : '') + '" data-cat="' + c + '">' + c + '</span></div>';
+      });
+      scroll.innerHTML = html;
+      bindCategoryClicks();
+    }
+
+    function bindCategoryClicks() {
+      var labels = document.querySelectorAll('.category-label');
+      labels.forEach(function(l) {
+        l.style.cursor = 'grab';
+        // 防止重复绑定：已绑定的跳过
+        if (l.dataset.pobiBound === '1') return;
+        l.dataset.pobiBound = '1';
+        l.addEventListener('click', function(e) {
+          e.stopPropagation();
+          // 读取分类名：优先 data-cat，其次文本内容
+          var cat = l.dataset.cat || l.textContent.trim() || '全部';
+          if (cat === '全部') cat = '全部';
+          window.currentCategory = cat;
+          if (window.filterRecordsByCategory) {
+            window.filterRecordsByCategory(cat);
+          }
+        });
+      });
+    }
+
+    
+
+    // ── 右键菜单 ──
+    var ctxMenu = null;
+    function showContextMenu(x, y, rec, card) {
+      if (ctxMenu) { ctxMenu.remove(); }
+      ctxMenu = document.createElement('div');
+      ctxMenu.style.cssText = 'position:fixed;z-index:99999;background:#1A1D27;border-radius:10px;padding:8px;min-width:140px;box-shadow:0 4px 20px rgba(0,0,0,0.3);';
+      ctxMenu.style.left = x + 'px';
+      ctxMenu.style.top = y + 'px';
+      ctxMenu.innerHTML =
+        '<div class="ctx-item" style="color:rgba(255,255,255,0.85);padding:8px 12px;border-radius:6px;cursor:grab;font-size:13px;">✏️ 编辑</div>' +
+        '<div class="ctx-item" style="color:rgba(255,255,255,0.85);padding:8px 12px;border-radius:6px;cursor:grab;font-size:13px;">💥 破壁</div>' +
+        '<div class="ctx-divider" style="height:1px;background:rgba(255,255,255,0.1);margin:4px 0;"></div>' +
+        '<div class="ctx-item danger" style="color:#FF6B6B;padding:8px 12px;border-radius:6px;cursor:grab;font-size:13px;">🗑 删除</div>';
+      document.body.appendChild(ctxMenu);
+      var items = ctxMenu.querySelectorAll('.ctx-item');
+      items[0].addEventListener('click', function() {
+        ctxMenu.remove(); ctxMenu = null;
+        var inp = document.getElementById('quickRecordInput');
+        if (inp) { inp.value = rec.content; inp.focus(); }
+      });
+      items[1].addEventListener('click', function() {
+        ctxMenu.remove(); ctxMenu = null;
+        if (api.openPanel) {
+          localStorage.setItem('pobi_pending_pobi_data', JSON.stringify({ originalContent: rec.content, aiAnalysis: '' }));
+          api.openPanel('破壁结果');
+        }
+      });
+      items[2].addEventListener('click', function() {
+        ctxMenu.remove(); ctxMenu = null;
+        var all = safeJSON(localStorage.getItem('pobi_records'), []);
+        all = all.filter(function(r) { return r.id !== rec.id; });
+        localStorage.setItem('pobi_records', JSON.stringify(all));
+        card.remove();
+        showQuickToast('已删除');
+      });
+      document.addEventListener('click', function hide() { if (ctxMenu) { ctxMenu.remove(); ctxMenu = null; } document.removeEventListener('click', hide); });
+    }
+
+    
+
+    function showQuickToast(msg) {
+      var t = document.getElementById('saveToast');
+      if (!t) return;
+      t.textContent = msg;
+      t.classList.add('visible');
+      setTimeout(function() { t.classList.remove('visible'); }, 2000);
+    }
+
+    // ── 语音记录播放器（DOM 创建，避免 innerHTML 冲突）──
+    function addVoicePlayers() {
+      var cards = document.querySelectorAll('.record-card');
+      cards.forEach(function(card) {
+        if (card.dataset.voiceChecked) return;
+        card.dataset.voiceChecked = '1';
+        var recId = parseInt(card.dataset.recordId);
+        if (!recId) return;
+        try {
+          var all = safeJSON(localStorage.getItem('pobi_records'), []);
+          var rec = all.find(function(r) { return r.id === recId; });
+          // voiceIsFile: true 表示文件路径（app:// URL），false/undefined 表示 base64 data URL
+          var hasVoice = rec && rec.voiceData && (rec.voiceIsFile || rec.voiceData.length > 100);
+          if (hasVoice) {
+            var contentDiv = card.querySelector('.record-content');
+            if (contentDiv && !contentDiv.querySelector('audio')) {
+              // 清空原有文本
+              contentDiv.textContent = '';
+              var wrapper = document.createElement('div');
+              wrapper.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+              var icon = document.createElement('span');
+              icon.textContent = '🎙️';
+
+              var audio = document.createElement('audio');
+              audio.controls = true;
+              audio.preload = 'metadata';
+              audio.style.cssText = 'height:26px;flex:1;min-width:130px;';
+              audio.src = rec.voiceData;
+              // 防止点击播放器时触发了卡片点击
+              audio.addEventListener('click', function(e) { e.stopPropagation(); });
+
+              var dur = rec.voiceDuration || 0;
+              var durLabel = document.createElement('span');
+              durLabel.style.cssText = 'font-size:11px;color:rgba(0,0,0,0.4);white-space:nowrap;';
+              durLabel.textContent = Math.floor(dur/60) + '\'' + String(Math.floor(dur%60)).padStart(2,'0') + '"';
+
+              wrapper.appendChild(icon);
+              wrapper.appendChild(audio);
+              wrapper.appendChild(durLabel);
+              contentDiv.appendChild(wrapper);
+
+              if (rec.voiceText) {
+                var txtDiv = document.createElement('div');
+                txtDiv.style.cssText = 'font-size:12px;color:rgba(0,0,0,0.5);margin-top:5px;';
+                txtDiv.textContent = '📝 ' + rec.voiceText;
+                contentDiv.appendChild(txtDiv);
+              }
+            }
+          }
+        } catch(e) { console.warn('[语音播放器] 渲染失败:', e); }
+      });
+    }
+    setInterval(addVoicePlayers, 2000);
+
+    // ── 打开完整日报/周报 ──
+    var openFullDaily = document.getElementById('openFullDaily');
+    var openFullWeekly = document.getElementById('openFullWeekly');
+    if (openFullDaily) {
+      openFullDaily.addEventListener('click', function() {
+        if (api.openPanel) api.openPanel('日报');
+      });
+    }
+    if (openFullWeekly) {
+      openFullWeekly.addEventListener('click', function() {
+        if (api.openPanel) api.openPanel('周报');
+      });
+    }
+
+    // 初始化分类绑定
+    setTimeout(function() {
+      bindCategoryClicks();
+      addVoicePlayers();
+    }, 500);
+  })();
+  </script>
+
+</body>
+</html>

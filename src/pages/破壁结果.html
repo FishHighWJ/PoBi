@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>破壁结果 - 破壁视界</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #F8F9FA;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    /* ================================================================
+       火花 canvas
+       ================================================================ */
+    #spark-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ================================================================
+       遮罩层
+       ================================================================ */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.35);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9998;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-overlay.dismissing {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    /* ================================================================
+       弹窗容器
+       ================================================================ */
+    .modal-dialog {
+      width: 440px;
+      min-width: 340px;
+      min-height: 300px;
+      background: #FFFFFF;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 16px;
+      box-shadow:
+        0 1px 3px rgba(0, 0, 0, 0.04),
+        0 8px 32px rgba(0, 0, 0, 0.08);
+      display: flex;
+      flex-direction: column;
+      overflow: auto;
+      resize: both;
+    }
+
+    /* ================================================================
+       Header
+       ================================================================ */
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 0;
+      -webkit-app-region: drag;
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-size: 17px;
+      font-weight: 600;
+      color: #1A1D27;
+      letter-spacing: 0.3px;
+    }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #999;
+      transition: all 0.15s ease;
+      flex-shrink: 0;
+      -webkit-app-region: no-drag;
+    }
+
+    .modal-close:hover {
+      color: #1A1D27;
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    /* ================================================================
+       3D 翻转容器
+       ================================================================ */
+    .flip-scene {
+      perspective: 1000px;
+      padding: 20px 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .flip-card {
+      width: 360px;
+      height: 280px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      cursor: pointer;
+    }
+
+    .flip-card.flipped {
+      transform: rotateY(180deg);
+    }
+
+    /* 共享面样式 */
+    .flip-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: 16px;
+      background: #FFFFFF;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    /* ================================================================
+       正面：你的想法
+       ================================================================ */
+    .flip-front {
+      justify-content: space-between;
+    }
+
+    .face-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #999;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    .face-content {
+      flex: 1;
+      font-size: 14px;
+      color: #1A1D27;
+      line-height: 1.8;
+      padding: 8px 0;
+      overflow-y: auto;
+    }
+
+    /* 正文滚动条 */
+    .face-content::-webkit-scrollbar {
+      width: 3px;
+    }
+    .face-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .face-content::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.12);
+      border-radius: 2px;
+    }
+    .face-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .face-hint {
+      font-size: 12px;
+      color: #B3B3B3;
+    }
+
+    /* ================================================================
+       背面：破壁视角
+       ================================================================ */
+    .flip-back {
+      transform: rotateY(180deg);
+      justify-content: space-between;
+    }
+
+    .face-theory {
+      font-size: 11px;
+      color: #999;
+      line-height: 1.6;
+      padding-top: 12px;
+      border-top: 1px solid #EEEEEE;
+    }
+
+    .face-theory-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: #B3B3B3;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    /* ================================================================
+       底部操作栏
+       ================================================================ */
+    .action-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 0 24px 20px;
+      flex-shrink: 0;
+    }
+
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.04);
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #555;
+      transition: all 0.2s ease;
+    }
+
+    .btn-icon:hover {
+      background: #1A1D27;
+      color: #fff;
+    }
+
+    .btn-icon:hover svg {
+      stroke: #fff;
+    }
+
+    .btn-icon svg {
+      transition: transform 0.3s ease;
+    }
+
+    .btn-icon.flipped svg {
+      transform: rotate(180deg);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 10px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: none;
+      font-family: inherit;
+      letter-spacing: 0.3px;
+      user-select: none;
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .btn-primary {
+      background: #1A1D27;
+      color: #FFFFFF;
+    }
+
+    .btn-primary:hover {
+      color: #1A1D27;
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    /* saved 态：底色反转，黑星可见 */
+    .btn-primary.saved {
+      color: #1A1D27;
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    /* 按钮文字 */
+    .btn-primary .btn-text {
+      transition: opacity 0.15s ease;
+    }
+
+    .btn-primary.saved .btn-text {
+      opacity: 0;
+    }
+
+    /* 星星图标 */
+    .btn-primary .star-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      transform: translate(-50%, -50%) scale(0) rotate(-30deg);
+      opacity: 0;
+      transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
+    }
+
+    .btn-primary.saved .star-icon {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1) rotate(0deg);
+    }
+
+    .btn-primary .star-icon .star-stroke {
+      stroke-dasharray: 80;
+      stroke-dashoffset: 80;
+    }
+
+    .btn-primary.saved .star-icon .star-stroke {
+      stroke-dashoffset: 0;
+      transition: stroke-dashoffset 0.5s ease-out 0.15s;
+    }
+
+    .btn-primary .star-icon .star-fill {
+      opacity: 0;
+    }
+
+    .btn-primary.saved .star-icon .star-fill {
+      opacity: 1;
+      transition: opacity 0.3s ease 0.35s;
+    }
+
+    /* ================================================================
+       右侧弹出详情面板（悬停背面时出现）
+       ================================================================ */
+    .detail-popout {
+      position: fixed;
+      width: 340px;
+      max-height: 500px;
+      background: #FFFFFF;
+      border: 1px solid rgba(0, 0, 0, 0.06);
+      border-radius: 16px;
+      box-shadow: 0 4px 28px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      padding: 28px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateX(12px);
+      transition: all 0.25s ease;
+      z-index: 10000;
+      overflow-y: auto;
+    }
+
+    .detail-popout.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(0);
+    }
+
+    .detail-popout .popout-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #999;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .detail-popout .popout-content {
+      font-size: 14px;
+      color: #1A1D27;
+      line-height: 1.9;
+      margin-bottom: 20px;
+    }
+
+    .detail-popout .popout-divider {
+      height: 1px;
+      background: #EEEEEE;
+      margin-bottom: 16px;
+    }
+
+    .detail-popout .popout-theory-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: #B3B3B3;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .detail-popout .popout-theory {
+      font-size: 11px;
+      color: #999;
+      line-height: 1.7;
+    }
+
+    /* 弹出面板滚动条 */
+    .detail-popout::-webkit-scrollbar {
+      width: 3px;
+    }
+    .detail-popout::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .detail-popout::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.12);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 火花粒子画布 -->
+  <canvas id="spark-canvas"></canvas>
+
+  <!-- 遮罩层 -->
+  <div class="modal-overlay" id="modalOverlay">
+
+    <div class="modal-dialog">
+
+      <!-- Header -->
+      <div class="modal-header">
+        <div class="header-left">
+          <!-- SVG 破壁图标：两个箭头相向 -->
+          <span class="header-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" stroke="#1A1D27" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <polyline points="10 6 6 6 6 10"/>
+              <line x1="6" y1="18" x2="18" y2="6"/>
+              <polyline points="14 18 18 18 18 14"/>
+            </svg>
+          </span>
+          <span class="modal-title">破壁视角</span>
+        </div>
+        <span class="modal-close" id="modalClose">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </span>
+      </div>
+
+      <!-- 3D 翻转场景 -->
+      <div class="flip-scene">
+        <div class="flip-card" id="flipCard">
+
+          <!-- ========== 正面：你的想法 ========== -->
+          <div class="flip-face flip-front">
+            <span class="face-label">你的想法</span>
+            <p class="face-content" id="frontContent">
+              今天刷到一个考研视频，说考研人数又创新高了，感觉竞争压力越来越大，不知道自己要不要也加入这个赛道...
+            </p>
+            <span class="face-hint">点击卡片 或 点击下方图标翻转</span>
+          </div>
+
+          <!-- ========== 背面：破壁视角 ========== -->
+          <div class="flip-face flip-back" id="backFace">
+            <span class="face-label">破壁视角</span>
+            <p class="face-content" id="backContent">
+              你看到的「考研人数创新高」这一信息，本身可能就是算法推送的结果。当你开始关注考研话题，平台会持续推送同类内容，让你误以为「所有人都在考研」。实际上，2025 年全国考研报名人数为 388 万，较 2024 年的 438 万下降了 11.4%——考研热度正在降温。与此同时，职业教育、技能培训等替代路径正在被更多人选择。你看到的不是全貌，而是算法为你构建的「考研焦虑」信息茧房。
+            </p>
+            <div class="face-theory">
+              <div class="face-theory-label">理论依据</div>
+              <span id="theoryText">信息茧房（Filter Bubble）：Eli Pariser 在《The Filter Bubble》中指出，算法推荐系统会让用户陷入信息孤岛，只看到与自己既有观点一致的内容，从而丧失对真实世界的全面认知。</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 底部操作栏 -->
+      <div class="action-bar">
+        <button class="btn-icon" id="toggleFlipBtn" title="翻转">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="#555" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+          </svg>
+        </button>
+        <button class="btn btn-primary" id="saveBtn">
+          <span class="btn-text">记录下来</span>
+          <svg class="star-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#1A1D27" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <polygon class="star-stroke" points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            <polygon class="star-fill" points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill="#1A1D27" stroke="none"/>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- 右侧弹出详情面板 -->
+    <div class="detail-popout" id="detailPopout">
+      <span class="popout-label">破壁视角</span>
+      <p class="popout-content" id="popoutContent"></p>
+      <div class="popout-divider"></div>
+      <span class="popout-theory-label">理论依据</span>
+      <p class="popout-theory" id="popoutTheory"></p>
+    </div>
+  </div>
+
+  
+<script src="../utils/shared.js"></script>
+<script>ThemeManager.init();</script>
+<script>
+    // ================================================================
+    // DOM 引用
+    // ================================================================
+    const modalOverlay   = document.getElementById('modalOverlay');
+    const modalClose     = document.getElementById('modalClose');
+    const flipCard       = document.getElementById('flipCard');
+    const toggleFlipBtn  = document.getElementById('toggleFlipBtn');
+    const saveBtn        = document.getElementById('saveBtn');
+    const frontContent   = document.getElementById('frontContent');
+    const backContent    = document.getElementById('backContent');
+    const theoryText     = document.getElementById('theoryText');
+    const backFace        = document.getElementById('backFace');
+    const detailPopout    = document.getElementById('detailPopout');
+    const popoutContent   = document.getElementById('popoutContent');
+    const popoutTheory    = document.getElementById('popoutTheory');
+
+    // ================================================================
+    // 右侧弹出面板
+    // ================================================================
+    function positionPopout() {
+      const backRect = backFace.getBoundingClientRect();
+      // 面板出现在卡片右侧，垂直居中
+      const top  = backRect.top + backRect.height / 2;
+      const left = backRect.right + 20;
+      detailPopout.style.top  = top + 'px';
+      detailPopout.style.left = left + 'px';
+      detailPopout.style.transform = 'translateY(-50%) translateX(12px)';
+    }
+
+    function showPopout() {
+      popoutContent.textContent = backContent.textContent;
+      popoutTheory.textContent  = theoryText.textContent;
+      positionPopout();
+      detailPopout.classList.add('active');
+      detailPopout.style.transform = 'translateY(-50%) translateX(0)';
+    }
+
+    function hidePopout() {
+      detailPopout.classList.remove('active');
+    }
+
+    // 悬停背面时显示弹出面板
+    backFace.addEventListener('mouseenter', () => {
+      if (!isFlipped) return; // 只有翻到背面才触发
+      showPopout();
+    });
+
+    backFace.addEventListener('mouseleave', () => {
+      hidePopout();
+    });
+
+    // 窗口大小变化时重新定位
+    window.addEventListener('resize', () => {
+      if (detailPopout.classList.contains('active')) {
+        positionPopout();
+      }
+    });
+
+    // ================================================================
+    // 状态
+    // ================================================================
+    let isFlipped = false;
+
+    // ================================================================
+    // 翻转控制
+    // ================================================================
+    function flip() {
+      isFlipped = !isFlipped;
+
+      if (isFlipped) {
+        flipCard.classList.add('flipped');
+        toggleFlipBtn.classList.add('flipped');
+      } else {
+        flipCard.classList.remove('flipped');
+        toggleFlipBtn.classList.remove('flipped');
+      }
+    }
+
+    // 点击卡片翻转
+    flipCard.addEventListener('click', () => flip());
+
+    // 图标按钮翻转
+    toggleFlipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      flip();
+    });
+
+    // ================================================================
+    // 记录下来
+    // ================================================================
+    saveBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (saveBtn.classList.contains('saved')) return;
+
+      saveBtn.classList.add('saved');
+
+      const originalContent = frontContent.textContent;
+      const aiAnalysis = backContent.textContent;
+      
+      const existingRecords = safeJSON(localStorage.getItem("pobi_records"), []);
+      const maxId = existingRecords.length > 0 ? Math.max(...existingRecords.map(function(r) { return Number(r.id) || 0; })) : 0;
+      const newRecord = {
+        id: maxId + 1,
+        content: originalContent,
+        aiAnalysis: aiAnalysis,
+        createdAt: new Date().toISOString(),
+        category: '破壁记录'
+      };
+      
+      existingRecords.unshift(newRecord);
+      localStorage.setItem('pobi_records', JSON.stringify(existingRecords));
+
+      // 显示已保存状态，由用户自行关闭面板（不再强制关闭）
+      var btnText = saveBtn.querySelector('.btn-text');
+      if (btnText) { btnText.textContent = '已保存 ✓'; }
+      // 2秒后恢复按钮文字
+      setTimeout(() => {
+        saveBtn.classList.remove('saved');
+        if (btnText) { btnText.textContent = '记录下来'; }
+      }, 2500);
+    });
+
+    // ================================================================
+    // 关闭弹窗
+    // ================================================================
+    function closeModal() {
+      window.electronAPI.closePanel();
+    }
+
+    function openModal() {
+      modalOverlay.style.display = 'flex';
+    }
+
+    modalClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.electronAPI.closePanel();
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+      if (e.target === modalOverlay) window.electronAPI.closePanel();
+    });
+
+    // ================================================================
+    // 从 localStorage 读取记录面板传递的数据
+    // ================================================================
+    function loadPobiData() {
+      try {
+        const dataStr = localStorage.getItem('pobi_pending_pobi_data');
+        if (dataStr) {
+          const data = JSON.parse(dataStr);
+          const { originalContent, aiAnalysis } = data;
+          if (originalContent) {
+            frontContent.textContent = originalContent;
+          }
+          if (aiAnalysis) {
+            backContent.textContent = aiAnalysis;
+            theoryText.textContent = 'AI 分析结果：基于用户提供的内容，通过 AI 模型进行深度分析和思维破壁，帮助用户突破思维局限，发现新的视角。';
+            popoutContent.textContent = aiAnalysis;
+            popoutTheory.textContent = theoryText.textContent;
+          }
+          localStorage.removeItem('pobi_pending_pobi_data');
+        }
+      } catch (error) {
+        console.error('读取破壁数据失败:', error);
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', loadPobiData);
+
+    // ================================================================
+    // ClickSpark — 点击火花
+    // ================================================================
+
+    new ClickSpark({
+      sparkColor:  '#1A1D27',
+      sparkSize:   10,
+      sparkRadius: 15,
+      sparkCount:  8,
+      duration:    400,
+      easing:      'ease-out',
+      extraScale:  1.0,
+    });
+
+    // ================================================================
+    // 暴露 API
+    // ================================================================
+    window.PoBiBreakthrough = {
+      open(opts = {}) {
+        openModal();
+
+        if (opts.idea) {
+          frontContent.textContent = opts.idea;
+        }
+
+        if (opts.perspective) {
+          backContent.textContent = opts.perspective;
+        }
+
+        if (opts.theory) {
+          theoryText.textContent = opts.theory;
+        }
+
+        // 重置为正面
+        if (isFlipped) {
+          flipCard.classList.remove('flipped');
+          toggleFlipBtn.classList.remove('flipped');
+          isFlipped = false;
+        }
+
+        saveBtn.classList.remove('saved');
+      },
+
+      close: closeModal,
+
+      getState() {
+        return { isFlipped };
+      },
+    };
+
+    // 弹窗拖拽移动
+    (function() {
+      const dlg = document.querySelector('.modal-dialog');
+      const hdr = document.querySelector('.modal-header');
+      if (!dlg || !hdr) return;
+      dlg.style.position = 'fixed';
+      let d = false, sx, sy, sl, st;
+      hdr.style.cursor = 'grab';
+      hdr.addEventListener('mousedown', (e) => {
+        d = true; sx = e.clientX; sy = e.clientY;
+        const r = dlg.getBoundingClientRect();
+        sl = r.left; st = r.top;
+        dlg.style.transition = 'none';
+        e.preventDefault();
+      });
+      document.addEventListener('mousemove', (e) => {
+        if (!d) return;
+        dlg.style.left = (sl + e.clientX - sx) + 'px';
+        dlg.style.top  = (st + e.clientY - sy) + 'px';
+      });
+      document.addEventListener('mouseup', () => { d = false; dlg.style.transition = ''; });
+    })();
+
+    console.log('破壁结果弹窗已就绪');
+  </script>
+
+</body>
+</html>

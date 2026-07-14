@@ -1,0 +1,33 @@
+﻿appId: com.pobi.wall-breaking-horizon
+productName: "破壁视界"
+copyright: "Copyright © 2025"
+
+directories:
+  output: ../dist
+  buildResources: build
+
+files:
+  - main.js
+  - preload.js
+  - package.json
+  - pages/**/*
+  - utils/**/*
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: build/icon.ico
+  artifactName: "${productName}-${version}-setup.${ext}"
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: "破壁视界"
+
+portable:
+  artifactName: "${productName}-${version}-portable.${ext}"
+
+extraResources: []

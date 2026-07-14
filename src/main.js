@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, session, Tray, Menu, globalShortcut, nativeImage, dialog, protocol, net } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, session, Tray, Menu, globalShortcut, nativeImage, dialog, protocol } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { execFile } = require('child_process');
@@ -7,7 +7,6 @@ const os = require('os');
 // ── 注册自定义安全协议（使 SpeechRecognition 等 API 可用）────────
 // ── 启用 Web Speech API + 设备端语音识别（离线可用） ────────
 app.commandLine.appendSwitch("enable-features", "WebSpeech,OnDeviceSpeechRecognition");
-app.commandLine.appendSwitch("disable-features", "");
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }

@@ -118,62 +118,14 @@ window.PoBiUtils = {
     const config = this.getAIConfig();
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key');
 
-    // 优先使用主进程代理（绕过 CORS）
     if (window.electronAPI && window.electronAPI.callAIApi) {
-      try {
-        const result = await window.electronAPI.callAIApi(prompt, systemPrompt, config);
-        if (result.success) {
-          return result.content;
-        } else {
-          throw new Error(result.error);
-        }
-      } catch (e) {
-        throw new Error('API 调用失败: ' + e.message);
-      }
+      const result = await window.electronAPI.callAIApi(prompt, systemPrompt, config);
+      if (result.success) return result.content;
+      throw new Error(result.error);
     }
-
-    // 降级：直接使用 fetch（仅在非 Electron 环境或 API 不可用时）
-    const url = `${config.apiUrl.replace(/\/+$/, '')}/chat/completions`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${config.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: config.modelName,
-          messages: [
-            { role: 'system', content: systemPrompt || '你是一个贴心温暖的思维破壁小助手，说话语气委婉温柔，像好朋友一样真诚地为用户着想。请针对用户提供的内容，深入分析并提供有价值的帮助。回答要求：1) 语气亲切柔和，避免生硬说教，多用鼓励和支持的话语；2) 帮助用户从不同角度思考问题，打破思维局限；3) 提供具体可执行的建议和解决方案，给用户明确的行动方向；4) 语言通俗易懂，用日常聊天的口吻表达；5) 内容要有深度，能真正帮助用户开拓思路、解决问题；6) 不要使用任何特殊符号（如星号、括号、序号等）。' },
-            { role: 'user', content: prompt },
-          ],
-          temperature: 0.8,
-          max_tokens: 2000,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`API 请求失败: ${response.status} — ${errorText}`);
-      }
-      const data = await response.json();
-      if (!data.choices || data.choices.length === 0) {
-        throw new Error('API 返回了空的回复，请检查模型名称是否正确或尝试其他模型');
-      }
-      let content = data.choices[0].message.content;
-      content = content.replace(/\*/g, '').replace(/【/g, '').replace(/】/g, '').replace(/「/g, '').replace(/」/g, '').replace(/《/g, '').replace(/》/g, '').replace(/【/g, '').replace(/】/g, '').trim();
-      return content;
-    } catch (e) {
-      clearTimeout(timeout);
-      if (e.name === 'AbortError') throw new Error('API 请求超时（30秒），请检查网络或 API 地址');
-      throw e;
-    }
+    throw new Error('API 调用不可用：electronAPI 未加载');
   },
 
-  // ── 获取今日记录 / 本周记录 ─────────────────────────────────
   getTodayRecords() {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();

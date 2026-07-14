@@ -234,8 +234,7 @@ function createFloatingWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: false,
-    },
+          },
   });
 
   floatingWindow.loadURL('app://pages/悬浮窗.html');
@@ -297,8 +296,7 @@ function showSidePanel(pageName) {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      webSecurity: false,
-    },
+          },
   });
 
   sidePanel.loadURL('app://pages/' + fileName);

@@ -43,6 +43,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   transcribeWav: (wavBase64) => ipcRenderer.invoke('transcribe-wav', wavBase64),
 
   /** 语音转文字 — Whisper 兼容 API */
-  transcribeWhisper: (wavBase64, sttUrl, sttKey, sttModel) => ipcRenderer.invoke('transcribe-whisper', { wavBase64, sttUrl, sttKey, sttModel }),
-
-  });
+  transcribeWhisper: (wavBase64, sttUrl, sttKey, sttModel) => ipcRenderer.invoke('transcribe-whisper', { wavBase64, sttUrl, sttKey, sttModel })
+});
